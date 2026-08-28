@@ -4,7 +4,7 @@
   let step = 1;
   let selectedIds = [];
   let searchQuery = '';
-  let sortMode = 'time';  // 'time' 按添加时间 | 'freq' 按使用频率
+  let sortMode = null;  // null 未选择 | 'time' 按添加时间 | 'freq' 按使用频率
   let groups = [];      // [{recipeId, name, keys:[...]}]
   let moduleMap = {};   // key -> runtime module（含计时状态，稳定）
 
@@ -23,7 +23,7 @@
     step = 1;
     selectedIds = [];
     searchQuery = '';
-    sortMode = 'time';
+    sortMode = null;
     groups = [];
     moduleMap = {};
     K.cleanupCurrent = function () { clearAllTimers(); };
@@ -39,6 +39,7 @@
 
   /* ---------------- 步骤 1：选择菜谱 ---------------- */
   function searchableRecipes() {
+    if (!sortMode) return [];
     const q = (searchQuery || '').trim().toLowerCase();
     const recipes = K.getRecipes().slice();
     if (sortMode === 'freq') {
@@ -68,7 +69,7 @@
         '<input id="cook-search" placeholder="按名称 / 烹饪方式 / 主料食材搜索" value="' + K.esc(searchQuery) + '">' +
       '</div>' +
       '<div class="seg seg--sm" id="sort-toggle" style="margin:10px 0 4px;">' +
-        '<button class="seg__btn' + (sortMode === 'time' ? ' active' : '') + '" data-sort="time">按添加时间</button>' +
+        '<button class="seg__btn' + (sortMode === 'time' ? ' active' : '') + '" data-sort="time">按时间添加</button>' +
         '<button class="seg__btn' + (sortMode === 'freq' ? ' active' : '') + '" data-sort="freq">按使用频率</button>' +
       '</div>' +
       '<div class="grid-2" id="cook-grid"></div>' +
@@ -79,6 +80,10 @@
   function renderCookGrid() {
     const grid = document.getElementById('cook-grid');
     const list = searchableRecipes();
+    if (!sortMode) {
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">' + K.icon('recipe', 42) + '<div style="margin-top:10px;">点击上方「按时间添加」或「按使用频率」显示菜谱</div></div>';
+      return;
+    }
     if (!list.length) {
       grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">' + K.icon('recipe', 42) + '<div style="margin-top:10px;">' + (K.getRecipes().length ? '没有匹配的菜谱' : '还没有菜谱，请先到「菜谱」页添加') + '</div></div>';
       return;
@@ -141,7 +146,7 @@
         const rt = {
           key: key, type: m.type, name: m.name, text: m.text || '', note: m.note || '',
           seconds: m.seconds || 0, remaining: m.seconds || 0, running: false, timer: null,
-          sauceText: ''
+          popup: m.popup !== false, sauceText: ''
         };
         if (m.type === 'action' && (m.name === '腌制' || m.name === '调味') && m.sauceId != null && r.sauces[m.sauceId]) {
           rt.sauceText = (r.sauces[m.sauceId].selected || []).join('、') || '未配置食材';
@@ -419,6 +424,7 @@
     setTimeout(() => { el.classList.add('hide'); setTimeout(() => el.remove(), 300); }, 3000);
   }
   function onTimerEnd(m) {
+    if (m.popup === false) return;
     ring(5);
     showTimerPopup(m.note || m.text || '');
   }

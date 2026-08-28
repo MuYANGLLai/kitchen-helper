@@ -42,6 +42,15 @@
     return h > 0 ? h + ':' + pad(m) + ':' + pad(s) : pad(m) + ':' + pad(s);
   };
 
+  /* 秒 -> 中文时长名（如 10分钟 / 1分30秒 / 30秒） */
+  K.fmtTimeName = function (sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    const m = Math.floor(sec / 60), s = sec % 60;
+    if (m === 0) return s + '秒';
+    if (s === 0) return m + '分钟';
+    return m + '分' + s + '秒';
+  };
+
   /* 时间戳 -> 中文日期时间 */
   K.fmtDateTime = function (ts) {
     const d = new Date(ts);

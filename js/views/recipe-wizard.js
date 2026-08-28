@@ -393,9 +393,19 @@
     ).join('');
 
     let items = '';
-    if (toolboxTab === '厨具') items = K.TOOLS.map(x => '<button class="toolbox__item tool" data-tool="' + K.esc(x) + '">' + K.esc(x) + '</button>').join('');
-    else if (toolboxTab === '动作') items = K.ACTIONS.map(x => '<button class="toolbox__item action" data-action="' + K.esc(x) + '">' + K.esc(x) + '</button>').join('');
-    else items = '<button class="toolbox__item time" data-addtime="1">' + K.icon('timer', 16) + ' 添加计时（默认 10 分钟）</button>';
+    if (toolboxTab === '厨具') {
+      items = K.TOOLS.map(x => '<button class="toolbox__item tool" data-tool="' + K.esc(x) + '">' + K.esc(x) + '</button>').join('') +
+        K.getCustomTools().map(x => '<button class="toolbox__item tool" data-tool="' + K.esc(x) + '">' + K.esc(x) + '</button>').join('') +
+        '<button class="toolbox__item custom" data-custom="tool">' + K.icon('plus', 14) + ' 自定义</button>';
+    } else if (toolboxTab === '动作') {
+      items = K.ACTIONS.map(x => '<button class="toolbox__item action" data-action="' + K.esc(x) + '">' + K.esc(x) + '</button>').join('') +
+        K.getCustomActions().map(x => '<button class="toolbox__item action" data-action="' + K.esc(x) + '">' + K.esc(x) + '</button>').join('') +
+        '<button class="toolbox__item custom" data-custom="action">' + K.icon('plus', 14) + ' 自定义</button>';
+    } else {
+      items = '<button class="toolbox__item time" data-addtime="1">' + K.icon('timer', 16) + ' 添加计时（10分钟）</button>' +
+        K.getCustomTimes().map(s => '<button class="toolbox__item time" data-addtime-sec="' + s + '">' + K.esc(K.fmtTimeName(s)) + '</button>').join('') +
+        '<button class="toolbox__item custom" data-custom="time">' + K.icon('plus', 14) + ' 自定义时间</button>';
+    }
 
     const slots = (draft.slots || []).map((slot, i) => slotHTML(i, slot)).join('');
 
@@ -432,27 +442,29 @@
         const sel = opts.map(x => '<option value="' + x.idx + '"' + (m.sauceId === x.idx ? ' selected' : '') + '>' + K.esc(sauceLabel(x.s, x.idx)) + '</option>').join('');
         body = '<select class="sauce-select" data-f="sauceId"><option value="">选择' + need + '酱汁</option>' + sel + '</select>';
       } else {
-        body = '<div style="font-size:12px;color:#B4B4BE;margin-top:6px;">请先在「酱汁」页配制' + need + '用途的酱汁</div>';
+        body = '<div style="font-size:11px;color:#B4B4BE;margin-top:5px;">请先在「酱汁」页配制' + need + '用途的酱汁</div>';
       }
     } else if (m.type === 'time') {
       const mm = Math.floor((m.seconds || 0) / 60), ss = (m.seconds || 0) % 60;
       body = '<div class="stepper stepper--inputs">' +
-        '<span class="stepper__lbl">分</span><input type="number" min="0" inputmode="numeric" class="time-input" data-timef="min" value="' + mm + '">' +
-        '<span class="stepper__lbl">秒</span><input type="number" min="0" max="59" inputmode="numeric" class="time-input" data-timef="sec" value="' + ss + '">' +
-        '<span class="time-total">' + K.fmtDuration(m.seconds || 0) + '</span>' +
-      '</div>';
+        '<input type="number" min="0" inputmode="numeric" class="time-input" data-timef="min" value="' + mm + '"><span class="time-lbl">分</span>' +
+        '<input type="number" min="0" max="59" inputmode="numeric" class="time-input" data-timef="sec" value="' + ss + '"><span class="time-lbl">秒</span>' +
+      '</div>' +
+      '<label class="popup-switch"><input type="checkbox" data-f="popup"' + (m.popup !== false ? ' checked' : '') + '><span>结束后弹窗</span></label>';
     }
 
-    const title = m.type === 'time' ? '倒计时' : m.name;
+    const title = m.type === 'time' ? K.fmtTimeName(m.seconds || 0) : m.name;
     return '<div class="module' + (m.type === 'tool' ? ' module--tool' : '') + '" data-key="' + m._id + '">' +
-      '<div class="module__handle">' + K.icon('grip', 18) + '</div>' +
+      '<div class="module__top">' +
+        '<div class="module__handle">' + K.icon('grip', 14) + '</div>' +
+        '<button class="module__del" data-delmodule="' + K.esc(m._id) + '">' + K.icon('close', 11) + '</button>' +
+      '</div>' +
       '<div class="module__body">' +
         '<span class="module__tag module__tag--' + m.type + '">' + (TAG[m.type] || '模块') + '</span>' +
         '<div class="module__title">' + K.esc(title || '') + '</div>' +
         body +
-        '<input class="field__input module-note" placeholder="添加备注…" data-f="note" value="' + K.esc(m.note || '') + '">' +
+        '<textarea class="field__input module-note" rows="1" placeholder="备注…" data-f="note">' + K.esc(m.note || '') + '</textarea>' +
       '</div>' +
-      '<button class="module__del" data-delmodule="' + K.esc(m._id) + '">' + K.icon('close', 14) + '</button>' +
     '</div>';
   }
 
@@ -473,6 +485,30 @@
     draft.slots[draft.slots.length - 1].push(m);
   }
 
+  function autosize(t) {
+    if (!t) return;
+    t.style.height = 'auto';
+    t.style.height = t.scrollHeight + 'px';
+  }
+
+  function handleCustom(kind) {
+    if (kind === 'time') {
+      K.prompt('自定义时间模块（输入默认分钟数）', '5', v => {
+        const min = parseFloat(v);
+        if (!isNaN(min) && min > 0) { K.addCustomTime(Math.round(min * 60)); render(); }
+        else if (v && v.trim()) K.toast('请输入有效的分钟数');
+      });
+    } else {
+      const label = kind === 'tool' ? '厨具' : '动作';
+      K.prompt('自定义' + label + '模块（输入名称）', '', v => {
+        if (v && v.trim()) {
+          if (kind === 'tool') K.addCustomTool(v.trim()); else K.addCustomAction(v.trim());
+          render();
+        }
+      });
+    }
+  }
+
   function bindStep4() {
     const content = root.querySelector('.view');
 
@@ -484,6 +520,10 @@
       const act = e.target.closest('[data-action]');
       if (act) { addModule(K.newModule('action', { name: act.dataset.action })); render(); return; }
       if (e.target.closest('[data-addtime]')) { addModule(K.newModule('time', { seconds: 600 })); render(); return; }
+      const ats = e.target.closest('[data-addtime-sec]');
+      if (ats) { addModule(K.newModule('time', { seconds: +ats.dataset.addtimeSec })); render(); return; }
+      const cust = e.target.closest('[data-custom]');
+      if (cust) { handleCustom(cust.dataset.custom); return; }
       if (e.target.closest('#w-add-slot')) { draft.slots.push([]); render(); return; }
       const delSlot = e.target.closest('[data-delslot]');
       if (delSlot) { draft.slots.splice(+delSlot.dataset.delslot, 1); render(); return; }
@@ -499,18 +539,21 @@
         if (!m) return;
         if (t.dataset.timef === 'min') m.seconds = (Math.max(0, parseInt(t.value, 10) || 0)) * 60 + ((m.seconds || 0) % 60);
         else m.seconds = Math.floor((m.seconds || 0) / 60) * 60 + Math.min(59, Math.max(0, parseInt(t.value, 10) || 0));
-        const total = mod.querySelector('.time-total');
-        if (total) total.textContent = K.fmtDuration(m.seconds || 0);
+        const titleEl = mod.querySelector('.module__title');
+        if (titleEl) titleEl.textContent = K.fmtTimeName(m.seconds || 0);
         return;
       }
+      if (t.matches && t.matches('.module-note')) autosize(t);
       const f = t.dataset.f;
       if (!f) return;
       const mod = t.closest('.module');
       const m = mod ? findModule(mod.dataset.key) : null;
       if (!m) return;
       if (f === 'sauceId') m.sauceId = (t.value === '') ? null : +t.value;
-      else m[f] = t.value;
+      else m[f] = (t.type === 'checkbox') ? t.checked : t.value;
     });
+
+    content.querySelectorAll('.module-note').forEach(autosize);
 
     const area = document.getElementById('slots-area');
     if (area && (draft.slots || []).some(s => s.length)) {

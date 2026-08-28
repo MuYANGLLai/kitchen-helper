@@ -5,7 +5,7 @@
   const LS_METHODS = 'kitchen.methods.v1';
   const LS_PREFS = 'kitchen.prefs.v1';
 
-  const APP_VERSION = '1.2.0';
+  const APP_VERSION = '1.3.0';
 
   /* ------- 常量 ------- */
   const SEASONINGS = [
@@ -29,7 +29,7 @@
   const DEFAULT_UNITS = ['勺', '少许', '无'];
 
   const TOOLS = ['炒锅', '汤锅', '平底煎锅', '电饭煲', '压力锅', '空气炸锅'];
-  const ACTIONS = ['炒', '蒸', '煎', '腌制', '调味'];
+  const ACTIONS = ['炒', '蒸', '煎', '腌制', '调味', '煮', '焯水'];
   const ACTION_NEEDS_SAUCE = { '腌制': '腌制', '调味': '调味' };
 
   const SEED_METHODS = ['炒', '蒸', '煎', '煮', '炖', '烤', '炸', '凉拌', '焖', '卤', '红烧', '清蒸', '爆炒', '干煸', '煲汤', '白灼', '盐焗', '酱烧', '香煎', '砂锅'];
@@ -54,7 +54,7 @@
   function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
 
   /* ------- 偏好 ------- */
-  function defaultPrefs() { return { customSauceItems: {}, customUnits: [], ingredientUsage: {}, unitHistory: [], processHistory: [] }; }
+  function defaultPrefs() { return { customSauceItems: {}, customUnits: [], ingredientUsage: {}, unitHistory: [], processHistory: [], customTools: [], customActions: [], customTimes: [] }; }
   function getPrefs() {
     const p = load(LS_PREFS, null);
     const d = defaultPrefs();
@@ -64,6 +64,9 @@
     d.ingredientUsage = p.ingredientUsage || {};
     d.unitHistory = p.unitHistory || [];
     d.processHistory = p.processHistory || [];
+    d.customTools = p.customTools || [];
+    d.customActions = p.customActions || [];
+    d.customTimes = p.customTimes || [];
     return d;
   }
   function savePrefs(p) { save(LS_PREFS, p); }
@@ -100,6 +103,15 @@
     savePrefs(p);
   }
 
+  /* 模块工具箱自定义：厨具/动作（名字）、时间（默认时长秒） */
+  function pushUnique(arr, v) { if (v != null && arr.indexOf(v) < 0) arr.push(v); }
+  function addCustomTool(name) { name = (name || '').trim(); if (!name) return; const p = getPrefs(); pushUnique(p.customTools, name); savePrefs(p); }
+  function addCustomAction(name) { name = (name || '').trim(); if (!name) return; const p = getPrefs(); pushUnique(p.customActions, name); savePrefs(p); }
+  function addCustomTime(seconds) { seconds = Math.round(seconds || 0); if (seconds <= 0) return; const p = getPrefs(); pushUnique(p.customTimes, seconds); savePrefs(p); }
+  function getCustomTools() { return getPrefs().customTools || []; }
+  function getCustomActions() { return getPrefs().customActions || []; }
+  function getCustomTimes() { return (getPrefs().customTimes || []).slice().sort((a, b) => a - b); }
+
   /* 某分类的配料（内置 + 自定义，按使用频率降序） */
   function getCategoryItems(catKey) {
     const cat = SAUCE_CATEGORIES.find(c => c.key === catKey);
@@ -131,6 +143,7 @@
       sauceId: m.sauceId != null ? m.sauceId : null,
       seconds: m.seconds || 0,
       note: m.note || '',
+      popup: m.popup !== false,
       _id: m._id || uid()
     };
   }
@@ -251,6 +264,9 @@
       });
       (data.prefs.customUnits || []).forEach(u => { if (p.customUnits.indexOf(u) < 0 && DEFAULT_UNITS.indexOf(u) < 0) p.customUnits.push(u); });
       Object.keys(data.prefs.ingredientUsage || {}).forEach(k => { p.ingredientUsage[k] = (p.ingredientUsage[k] || 0) + (data.prefs.ingredientUsage[k] || 0); });
+      (data.prefs.customTools || []).forEach(n => { if (p.customTools.indexOf(n) < 0) p.customTools.push(n); });
+      (data.prefs.customActions || []).forEach(n => { if (p.customActions.indexOf(n) < 0) p.customActions.push(n); });
+      (data.prefs.customTimes || []).forEach(s => { if (p.customTimes.indexOf(s) < 0) p.customTimes.push(s); });
       savePrefs(p);
     }
     if (opts.methods && data.methods) {
@@ -271,6 +287,7 @@
     seasoningByKey, seasoningUnit, selectedSeasonings,
     getPrefs, savePrefs, getAllUnits, addCustomUnit, addCustomSauceItem, getCategoryItems, bumpIngredientUse,
     getUnitHistory, getProcessHistory, rememberUnit, rememberProcess,
+    addCustomTool, addCustomAction, addCustomTime, getCustomTools, getCustomActions, getCustomTimes,
     bumpRecipeUse, exportData, importData
   });
 })();
