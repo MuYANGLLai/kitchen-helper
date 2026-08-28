@@ -5,7 +5,7 @@
   const LS_METHODS = 'kitchen.methods.v1';
   const LS_PREFS = 'kitchen.prefs.v1';
 
-  const APP_VERSION = '1.3.0';
+  const APP_VERSION = '1.4.0';
 
   /* ------- 常量 ------- */
   const SEASONINGS = [
@@ -210,6 +210,12 @@
   }
   function deleteHistory(id) { save(LS_HISTORY, getHistory().filter(x => x.id !== id)); }
 
+  /* ------- 清除数据 ------- */
+  function clearRecipes() { save(LS_RECIPES, []); }
+  function clearHistory() { save(LS_HISTORY, []); }
+  function clearPrefs() { save(LS_PREFS, defaultPrefs()); }
+  function clearMethods() { save(LS_METHODS, []); }
+
   /* ------- 查找 ------- */
   function seasoningByKey(key) { return SEASONINGS.find(s => s.key === key) || null; }
 
@@ -288,6 +294,6 @@
     getPrefs, savePrefs, getAllUnits, addCustomUnit, addCustomSauceItem, getCategoryItems, bumpIngredientUse,
     getUnitHistory, getProcessHistory, rememberUnit, rememberProcess,
     addCustomTool, addCustomAction, addCustomTime, getCustomTools, getCustomActions, getCustomTimes,
-    bumpRecipeUse, exportData, importData
+    bumpRecipeUse, exportData, importData, clearRecipes, clearHistory, clearPrefs, clearMethods
   });
 })();

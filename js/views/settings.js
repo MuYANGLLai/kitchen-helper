@@ -59,7 +59,10 @@
 
     const updateBody =
       '<div class="card" style="margin-top:8px;">' +
-        '<button class="btn btn--primary btn--block" id="update-current">' + K.icon('reset', 18) + '检查更新（当前网址）</button>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button class="btn btn--primary" id="update-current" style="flex:1;">' + K.icon('reset', 18) + '检查更新</button>' +
+          '<button class="btn btn--mint" id="refresh-btn">' + K.icon('reset', 18) + '刷新</button>' +
+        '</div>' +
         '<div style="margin:14px 0 8px;font-size:13px;color:#7C7C86;">或从指定网址拉取最新版本：</div>' +
         '<div style="display:flex;gap:8px;">' +
           '<input class="field__input" id="update-url-input" placeholder="https://…" style="flex:1;">' +
@@ -71,6 +74,7 @@
       '<div class="card" style="margin-top:8px;">' +
         '<button class="btn btn--block" id="export-btn" style="background:#EFFAF3;color:#1E5C3C;">' + K.icon('check', 18) + '备份（导出全部数据）</button>' +
         '<button class="btn btn--block" id="import-btn" style="background:#FFF1F4;color:#C2495F;margin-top:10px;">' + K.icon('plus', 18) + '导入（选择性恢复备份）</button>' +
+        '<button class="btn btn--block" id="clear-btn" style="background:#FFF1F4;color:#C2495F;margin-top:10px;">' + K.icon('trash', 18) + '清除数据（可选清除）</button>' +
         '<input type="file" id="import-file" accept="application/json,.json" style="display:none">' +
       '</div>';
 
@@ -132,6 +136,14 @@
       } catch (e) {
         K.toast('无法从该网址获取版本信息');
       }
+    });
+
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+      location.reload();
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      showClearPicker();
     });
 
     document.getElementById('export-btn').addEventListener('click', () => {
@@ -198,6 +210,46 @@
       const a = e.target.closest('[data-a]');
       if (a) close(a.dataset.a);
       else if (e.target === wrap) close('no');
+    });
+  }
+
+  function showClearPicker() {
+    const items = [
+      { id: 'recipes', label: '菜谱' },
+      { id: 'history', label: '烹饪历史' },
+      { id: 'prefs', label: '个性偏好（自定义配料 / 单位 / 模块）' },
+      { id: 'methods', label: '烹饪方式记录' }
+    ];
+    const rows = items.map(it =>
+      '<label class="import-row"><input type="checkbox" class="clear-item" data-k="' + it.id + '" checked><span>' + it.label + '</span></label>'
+    ).join('');
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:300;display:flex;align-items:center;justify-content:center;';
+    wrap.innerHTML =
+      '<div style="background:#fff;border-radius:22px;padding:20px;width:min(340px,88vw);box-shadow:0 10px 30px rgba(0,0,0,.2);">' +
+        '<div style="font-size:17px;font-weight:800;margin-bottom:4px;">选择要清除的数据</div>' +
+        '<div style="font-size:12px;color:#B4B4BE;margin-bottom:12px;">清除后无法恢复，建议先备份。</div>' +
+        rows +
+        '<div style="display:flex;gap:10px;margin-top:14px;">' +
+          '<button class="btn btn--soft" style="flex:1;" data-a="no">取消</button>' +
+          '<button class="btn btn--primary" style="flex:1;" data-a="yes">清除</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(wrap);
+
+    wrap.addEventListener('click', e => {
+      const a = e.target.closest('[data-a]');
+      if (!a) return;
+      if (a.dataset.a === 'yes') {
+        const checked = Array.from(wrap.querySelectorAll('.clear-item:checked')).map(x => x.dataset.k);
+        if (checked.indexOf('recipes') >= 0) K.clearRecipes();
+        if (checked.indexOf('history') >= 0) K.clearHistory();
+        if (checked.indexOf('prefs') >= 0) K.clearPrefs();
+        if (checked.indexOf('methods') >= 0) K.clearMethods();
+        K.toast('已清除所选数据');
+      }
+      wrap.remove();
     });
   }
 })();

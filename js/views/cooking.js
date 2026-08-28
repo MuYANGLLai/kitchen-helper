@@ -255,27 +255,28 @@
       '</div>'
     ).join('');
 
-    return '<div class="view" style="padding-bottom:130px;">' +
+    return '<div class="cooking-flow">' +
       '<div class="flow-head">' +
         '<button class="btn btn--icon" id="flow-back">' + K.icon('back', 20) + '</button>' +
         '<div class="fh-title">烹饪流程</div>' +
-        '<div style="width:64px;"></div>' +
+        '<button class="hold-btn hold-btn--rect" id="end-cook">长按结束烹饪</button>' +
       '</div>' +
-      '<div class="summary-card">' +
-        '<div class="sum-title">' + K.icon('seasoning', 16) + ' 食材汇总</div>' +
-        (agg.meats.length ? '<div style="font-size:12px;color:#7C7C86;margin-top:6px;">肉类</div><div class="sum-row">' + sumTags(agg.meats.map(x => Object.assign({}, x, { name: (x.thaw ? '解冻的' : '') + x.name }))) + '</div>' : '') +
-        (agg.vegs.length ? '<div style="font-size:12px;color:#7C7C86;margin-top:6px;">素菜</div><div class="sum-row">' + sumTags(agg.vegs) + '</div>' : '') +
-        (agg.seasons.length ? '<div style="font-size:12px;color:#7C7C86;margin-top:6px;">调味料</div><div class="sum-row">' + sumTags(agg.seasons) + '</div>' : '') +
-        (!agg.meats.length && !agg.vegs.length && !agg.seasons.length ? '<div style="font-size:13px;color:#7C7C86;">暂无食材</div>' : '') +
+      '<div class="cooking-flow__body">' +
+        '<div class="summary-card">' +
+          '<div class="sum-title">' + K.icon('seasoning', 16) + ' 食材汇总</div>' +
+          (agg.meats.length ? '<div style="font-size:12px;color:#7C7C86;margin-top:6px;">肉类</div><div class="sum-row">' + sumTags(agg.meats.map(x => Object.assign({}, x, { name: (x.thaw ? '解冻的' : '') + x.name }))) + '</div>' : '') +
+          (agg.vegs.length ? '<div style="font-size:12px;color:#7C7C86;margin-top:6px;">素菜</div><div class="sum-row">' + sumTags(agg.vegs) + '</div>' : '') +
+          (agg.seasons.length ? '<div style="font-size:12px;color:#7C7C86;margin-top:6px;">调味料</div><div class="sum-row">' + sumTags(agg.seasons) + '</div>' : '') +
+          (!agg.meats.length && !agg.vegs.length && !agg.seasons.length ? '<div style="font-size:13px;color:#7C7C86;">暂无食材</div>' : '') +
+        '</div>' +
+        '<div class="prep-list">' +
+          '<div style="font-size:14px;font-weight:800;margin-bottom:4px;">' + K.icon('check', 16) + ' 备料清单</div>' +
+          (prepHTML || '<div style="font-size:13px;color:#7C7C86;">暂无备料</div>') +
+        '</div>' +
+        '<div class="section-title">' + K.icon('grip', 18) + '烹饪模块（各菜谱平行，拖动调整，计时可点击）</div>' +
+        '<div id="module-area" class="module-area--side">' + (groupsHTML || '<div class="empty">没有选中的菜谱</div>') + '</div>' +
       '</div>' +
-      '<div class="prep-list">' +
-        '<div style="font-size:14px;font-weight:800;margin-bottom:4px;">' + K.icon('check', 16) + ' 备料清单</div>' +
-        (prepHTML || '<div style="font-size:13px;color:#7C7C86;">暂无备料</div>') +
-      '</div>' +
-      '<div class="section-title">' + K.icon('grip', 18) + '烹饪模块（拖动调整，计时可点击）</div>' +
-      '<div id="module-area">' + (groupsHTML || '<div class="empty">没有选中的菜谱</div>') + '</div>' +
-    '</div>' +
-    '<div class="hold-wrap"><button class="hold-btn" id="end-cook">长按<br>结束烹饪</button></div>';
+    '</div>';
   }
 
   function flowModuleHTML(m) {
@@ -341,10 +342,10 @@
       root: area, itemSelector: '.flow-module', handleSelector: '.module__handle',
       containerSelector: '.module-list', onDrop: rebuildFromDOM
     });
-    // 拖拽：菜谱组整体移动
+    // 拖拽：菜谱组整体移动（横向平行）
     K.makeDraggable({
       root: area, itemSelector: '.recipe-group', handleSelector: '.recipe-group__handle',
-      containerSelector: '#module-area', onDrop: rebuildFromDOM
+      containerSelector: '#module-area', axis: 'x', onDrop: rebuildFromDOM
     });
 
     // 长按结束烹饪
