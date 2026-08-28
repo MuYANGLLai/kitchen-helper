@@ -44,7 +44,8 @@
     for (const it of items) {
       if (it === active.item) continue;
       const r = it.getBoundingClientRect();
-      if (p.y < r.top + r.height / 2) { ref = it; break; }
+      const before = active.axis === 'x' ? (p.x < r.left + r.width / 2) : (p.y < r.top + r.height / 2);
+      if (before) { ref = it; break; }
     }
     if (ref) target.insertBefore(active.item, ref);
     else target.appendChild(active.item);
@@ -87,6 +88,7 @@
         dragging: false, moved: false,
         itemSel: opts.itemSelector,
         contSel: opts.containerSelector,
+        axis: opts.axis || 'y',
         onDrop: opts.onDrop
       };
     });

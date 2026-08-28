@@ -5,7 +5,7 @@
   const LS_METHODS = 'kitchen.methods.v1';
   const LS_PREFS = 'kitchen.prefs.v1';
 
-  const APP_VERSION = '1.1.0';
+  const APP_VERSION = '1.2.0';
 
   /* ------- 常量 ------- */
   const SEASONINGS = [
@@ -19,14 +19,14 @@
 
   const SAUCE_CATEGORIES = [
     { key: '常用', open: true, items: ['盐', '生抽', '蚝油', '食用油', '淀粉', '清水', '料酒'] },
-    { key: '咸鲜', open: true, items: ['食盐', '生抽', '老抽', '蚝油', '味精', '鸡精'] },
-    { key: '甜味', open: true, items: ['白糖', '冰糖', '红糖', '蜂蜜'] },
+    { key: '咸鲜', open: false, items: ['食盐', '生抽', '老抽', '蚝油', '味精', '鸡精'] },
+    { key: '甜味', open: false, items: ['白糖', '冰糖', '红糖', '蜂蜜'] },
     { key: '香料', open: false, items: ['白胡椒粉', '黑胡椒粉', '八角', '桂皮', '香叶', '花椒', '麻椒', '干辣椒', '五香粉', '十三香', '孜然粉', '辣椒粉'] },
     { key: '复合酱料', open: false, items: ['豆瓣酱', '黄豆酱', '甜面酱', '番茄酱', '芝麻酱', '花生酱', '芝麻香油', '辣椒油', '花椒油', '熟白芝麻'] }
   ];
 
   /* 酱料可选单位（'无' 表示无单位） */
-  const DEFAULT_UNITS = ['勺', '克', '毫升', '茶匙', '汤匙', '少许', '适量', '无'];
+  const DEFAULT_UNITS = ['勺', '少许', '无'];
 
   const TOOLS = ['炒锅', '汤锅', '平底煎锅', '电饭煲', '压力锅', '空气炸锅'];
   const ACTIONS = ['炒', '蒸', '煎', '腌制', '调味'];
@@ -54,7 +54,7 @@
   function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
 
   /* ------- 偏好 ------- */
-  function defaultPrefs() { return { customSauceItems: {}, customUnits: [], ingredientUsage: {} }; }
+  function defaultPrefs() { return { customSauceItems: {}, customUnits: [], ingredientUsage: {}, unitHistory: [], processHistory: [] }; }
   function getPrefs() {
     const p = load(LS_PREFS, null);
     const d = defaultPrefs();
@@ -62,9 +62,22 @@
     d.customSauceItems = p.customSauceItems || {};
     d.customUnits = p.customUnits || [];
     d.ingredientUsage = p.ingredientUsage || {};
+    d.unitHistory = p.unitHistory || [];
+    d.processHistory = p.processHistory || [];
     return d;
   }
   function savePrefs(p) { save(LS_PREFS, p); }
+
+  function rememberList(arr, val, max) {
+    val = (val || '').trim();
+    if (!val) return arr;
+    const list = [val].concat(arr.filter(x => x !== val));
+    return list.slice(0, max || 40);
+  }
+  function rememberUnit(u) { const p = getPrefs(); p.unitHistory = rememberList(p.unitHistory, u); savePrefs(p); }
+  function rememberProcess(pr) { const p = getPrefs(); p.processHistory = rememberList(p.processHistory, pr); savePrefs(p); }
+  function getUnitHistory() { return getPrefs().unitHistory || []; }
+  function getProcessHistory() { return getPrefs().processHistory || []; }
 
   function getAllUnits() {
     const cu = getPrefs().customUnits || [];
@@ -108,6 +121,10 @@
 
   /* ------- 菜谱 CRUD ------- */
   function normalizeModule(m) {
+    if (m.type === 'note') {
+      // 旧版「备注」模块迁移为带备注的工具模块
+      return { type: 'tool', name: '备注', sauceId: null, seconds: 0, note: m.text || m.note || '', _id: m._id || uid() };
+    }
     return {
       type: m.type || 'tool',
       name: m.name || '',
@@ -253,6 +270,7 @@
     getHistory, addHistory, updateHistory, deleteHistory,
     seasoningByKey, seasoningUnit, selectedSeasonings,
     getPrefs, savePrefs, getAllUnits, addCustomUnit, addCustomSauceItem, getCategoryItems, bumpIngredientUse,
+    getUnitHistory, getProcessHistory, rememberUnit, rememberProcess,
     bumpRecipeUse, exportData, importData
   });
 })();

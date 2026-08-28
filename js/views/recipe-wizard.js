@@ -151,12 +151,6 @@
   }
 
   /* ============ 步骤 2：食材 ============ */
-  function garlicToggleHTML() {
-    const cur = draft.seasonings['蒜'].unit || '瓣';
-    return '<div style="margin-top:12px;"><div style="font-size:13px;font-weight:700;color:#7C7C86;margin-bottom:8px;">蒜的单位</div>' +
-      '<div class="season-variants">' + ['瓣', '头'].map(u => '<button class="chip' + (cur === u ? ' active' : '') + '" data-garlic-unit="' + u + '">' + u + '</button>').join('') + '</div></div>';
-  }
-
   function step2HTML() {
     const meats = (draft.meats || []).map((m, i) => ingItemHTML('meat', i, m)).join('');
     const vegs = (draft.vegetables || []).map((v, i) => ingItemHTML('veg', i, v)).join('');
@@ -168,7 +162,6 @@
         const chips = s.variants.map(v => '<button class="chip' + (st.variant === v ? ' active' : '') + '" data-key="' + K.esc(s.key) + '" data-variant="' + K.esc(v) + '">' + K.esc(v) + '</button>').join('');
         seasonVars += '<div style="margin-top:14px;"><div style="font-size:13px;font-weight:700;color:#7C7C86;margin-bottom:8px;">' + K.esc(s.key) + '</div><div class="season-variants">' + chips + '</div></div>';
       }
-      if (s.key === '蒜' && st && st.sel) seasonVars += garlicToggleHTML();
     });
 
     const seasonGrid = K.SEASONINGS.map(s => {
@@ -201,9 +194,9 @@
       '<div class="qty-row">' +
         '<div class="field qty-name"><input class="field__input" placeholder="名称" data-kind="' + kind + '" data-i="' + i + '" data-f="name" value="' + K.esc(it.name) + '"></div>' +
         '<div class="field qty-num"><input class="field__input" placeholder="数量" inputmode="decimal" data-kind="' + kind + '" data-i="' + i + '" data-f="qty" value="' + K.esc(it.qty) + '"></div>' +
-        '<div class="field qty-unit"><input class="field__input" placeholder="单位" data-kind="' + kind + '" data-i="' + i + '" data-f="unit" value="' + K.esc(it.unit) + '"></div>' +
+        '<div class="field qty-unit"><div class="autocomplete"><input class="field__input" placeholder="单位" data-kind="' + kind + '" data-i="' + i + '" data-f="unit" value="' + K.esc(it.unit) + '"></div></div>' +
       '</div>' +
-      '<div class="field" style="margin-bottom:0;"><input class="field__input" placeholder="处理方式（如：切块 / 切片）" data-kind="' + kind + '" data-i="' + i + '" data-f="process" value="' + K.esc(it.process) + '"></div>' +
+      '<div class="field" style="margin-bottom:0;"><div class="autocomplete"><input class="field__input" placeholder="处理方式（如：切块 / 切片）" data-kind="' + kind + '" data-i="' + i + '" data-f="process" value="' + K.esc(it.process) + '"></div></div>' +
       (isMeat ? '<label style="display:flex;align-items:center;gap:8px;font-size:14px;color:#7C7C86;margin-top:10px;"><input type="checkbox" data-kind="meat" data-i="' + i + '" data-f="thaw"' + (it.thaw ? ' checked' : '') + '> 需要解冻</label>' : '') +
     '</div>';
   }
@@ -220,14 +213,20 @@
       item[f] = (t.type === 'checkbox') ? t.checked : t.value;
     });
 
+    // 单位 / 处理方式：历史文本联想
+    content.querySelectorAll('input[data-f="unit"], input[data-f="process"]').forEach(inp => {
+      const kind = inp.dataset.kind, i = +inp.dataset.i, f = inp.dataset.f;
+      K.setupSuggest(inp, f === 'unit' ? K.getUnitHistory : K.getProcessHistory, v => {
+        const item = kind === 'meat' ? draft.meats[i] : draft.vegetables[i];
+        if (item) item[f] = v;
+      });
+    });
+
     content.addEventListener('click', e => {
       const del = e.target.closest('[data-del]');
       if (del) { const kind = del.dataset.del, i = +del.dataset.i; if (kind === 'meat') draft.meats.splice(i, 1); else draft.vegetables.splice(i, 1); render(); return; }
       if (e.target.closest('#w-add-meat')) { draft.meats.push(K.emptyMeat()); render(); return; }
       if (e.target.closest('#w-add-veg')) { draft.vegetables.push(K.emptyVeg()); render(); return; }
-
-      const gu = e.target.closest('[data-garlic-unit]');
-      if (gu) { draft.seasonings['蒜'].unit = gu.dataset.garlicUnit; render(); return; }
 
       const season = e.target.closest('[data-season]');
       if (season) {
@@ -281,12 +280,16 @@
     const rows = [];
     (sauce.selected || []).forEach(n => {
       const amt = amtGet(sauce, n);
-      const opts = K.getAllUnits().map(u => '<option value="' + K.esc(u) + '"' + (amt.unit === u ? ' selected' : '') + '>' + K.esc(u) + '</option>').join('') +
-        '<option value="__custom__">自定义…</option>';
+      const units = K.getAllUnits();
+      const opts = units.map(u => '<button class="unit-opt' + (amt.unit === u ? ' active' : '') + '" data-uname="' + K.esc(n) + '" data-unit-opt="' + K.esc(u) + '">' + K.esc(u) + '</button>').join('') +
+        '<button class="unit-opt unit-opt--custom" data-uname="' + K.esc(n) + '" data-unit-opt="__custom__">' + K.icon('plus', 13) + ' 自定义</button>';
       rows.push('<div class="amount-row">' +
         '<span class="amount-row__name">' + K.esc(n) + '</span>' +
         '<input type="text" inputmode="decimal" placeholder="用量" data-amount="' + K.esc(n) + '" value="' + K.esc(amt.qty) + '">' +
-        '<select class="unit-select" data-unit="' + K.esc(n) + '">' + opts + '</select>' +
+        '<div class="unit-picker">' +
+          '<button class="unit-tab" data-unit-tab="' + K.esc(n) + '">' + K.esc(amt.unit || '勺') + K.icon('chevDown', 13) + '</button>' +
+          '<div class="unit-panel" data-unit-panel="' + K.esc(n) + '">' + opts + '</div>' +
+        '</div>' +
       '</div>');
     });
     seasonSel.forEach(s => {
@@ -338,6 +341,26 @@
       }
       const gu = e.target.closest('[data-garlic-unit]');
       if (gu) { draft.seasonings['蒜'].unit = gu.dataset.garlicUnit; render(); return; }
+
+      const unitTab = e.target.closest('[data-unit-tab]');
+      if (unitTab) {
+        const name = unitTab.dataset.unitTab;
+        const panel = content.querySelector('[data-unit-panel="' + name + '"]');
+        content.querySelectorAll('.unit-panel').forEach(p => { if (p !== panel) p.classList.remove('open'); });
+        if (panel) panel.classList.toggle('open');
+        return;
+      }
+      const unitOpt = e.target.closest('[data-unit-opt]');
+      if (unitOpt) {
+        const name = unitOpt.dataset.uname, val = unitOpt.dataset.unitOpt;
+        if (val === '__custom__') {
+          K.prompt('自定义单位', '', u => { if (u && u.trim()) { K.addCustomUnit(u.trim()); amtSet(draft.sauces[sauceIndex], name, null, u.trim()); render(); } });
+        } else {
+          amtSet(draft.sauces[sauceIndex], name, null, val);
+          render();
+        }
+        return;
+      }
       const si = e.target.closest('[data-sauce-item]');
       if (si) {
         const n = si.dataset.sauceItem;
@@ -359,16 +382,6 @@
         if (a && typeof a === 'object') a.qty = t.value; else s.amounts[name] = { qty: t.value, unit: '勺' };
       } else if (t.matches && t.matches('[data-season]')) {
         draft.sauces[sauceIndex].amounts[t.dataset.season] = t.value;
-      }
-    });
-
-    content.addEventListener('change', e => {
-      const t = e.target;
-      if (t.matches && t.matches('[data-unit]')) {
-        const name = t.dataset.unit;
-        if (t.value === '__custom__') {
-          K.prompt('自定义单位', '', u => { if (u && u.trim()) { K.addCustomUnit(u.trim()); amtSet(draft.sauces[sauceIndex], name, null, u.trim()); render(); } });
-        } else { amtSet(draft.sauces[sauceIndex], name, null, t.value); render(); }
       }
     });
   }
@@ -431,10 +444,10 @@
     }
 
     const title = m.type === 'time' ? '倒计时' : m.name;
-    return '<div class="module" data-key="' + m._id + '">' +
+    return '<div class="module' + (m.type === 'tool' ? ' module--tool' : '') + '" data-key="' + m._id + '">' +
       '<div class="module__handle">' + K.icon('grip', 18) + '</div>' +
       '<div class="module__body">' +
-        '<span class="module__tag module__tag--' + m.type + '">' + TAG[m.type] + '</span>' +
+        '<span class="module__tag module__tag--' + m.type + '">' + (TAG[m.type] || '模块') + '</span>' +
         '<div class="module__title">' + K.esc(title || '') + '</div>' +
         body +
         '<input class="field__input module-note" placeholder="添加备注…" data-f="note" value="' + K.esc(m.note || '') + '">' +
@@ -503,7 +516,8 @@
     if (area && (draft.slots || []).some(s => s.length)) {
       K.makeDraggable({
         root: area, itemSelector: '.module', handleSelector: '.module__handle',
-        containerSelector: '.slot-modules', onDrop: function () { rebuildSlots(); render(); }
+        containerSelector: '.slot-modules', axis: 'x',
+        onDrop: function () { rebuildSlots(); render(); }
       });
     }
     if (area && (draft.slots || []).length > 1) {
@@ -556,6 +570,8 @@
     } else if (step === 4) {
       if (!(draft.name || '').trim()) { K.toast('请先为菜谱命名'); return; }
       (draft.sauces || []).forEach(s => (s.selected || []).forEach(n => K.bumpIngredientUse(n)));
+      (draft.meats || []).forEach(m => { K.rememberUnit(m.unit); K.rememberProcess(m.process); });
+      (draft.vegetables || []).forEach(v => { K.rememberUnit(v.unit); K.rememberProcess(v.process); });
       K.saveRecipe(draft);
       K.toast(editingId ? '已保存修改' : '菜谱已保存');
       K.navigate('recipes');

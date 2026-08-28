@@ -1,4 +1,4 @@
-/* 设置页：版本信息 / 更新 / 数据管理 */
+/* 设置页：版本信息 / 更新 / 数据管理（一级菜单默认折叠） */
 (function () {
   function cmpVersion(a, b) {
     const pa = String(a || '0').split('.').map(n => parseInt(n, 10) || 0);
@@ -19,9 +19,7 @@
   }
 
   async function fetchVersion(baseUrl) {
-    const url = baseUrl
-      ? baseUrl + '/version.json?t=' + Date.now()
-      : './version.json?t=' + Date.now();
+    const url = baseUrl ? baseUrl + '/version.json?t=' + Date.now() : './version.json?t=' + Date.now();
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
@@ -40,43 +38,67 @@
     setTimeout(() => location.reload(), 600);
   }
 
+  function section(headIcon, title, id, bodyHTML) {
+    return '<div class="settings-sec">' +
+      '<button class="settings-sec__head" data-sec-head="' + id + '">' +
+        K.icon(headIcon, 18) + '<span>' + title + '</span>' + K.icon('chevDown', 16) +
+      '</button>' +
+      '<div class="settings-sec__body" data-sec-body="' + id + '">' + bodyHTML + '</div>' +
+    '</div>';
+  }
+
   K.renderSettings = function (root) {
     K.cleanupCurrent = function () {};
+
+    const versionBody =
+      '<div class="card" style="margin-top:8px;">' +
+        '<div class="setting-row" style="margin:0 0 10px;"><span class="sr-label">当前版本</span><span class="sr-val">v' + K.APP_VERSION + '</span></div>' +
+        '<div class="setting-row" style="margin:0 0 10px;"><span class="sr-label">存储方式</span><span class="sr-val">本机存储</span></div>' +
+        '<div class="setting-row" style="margin:0;"><span class="sr-label">安装方式</span><span class="sr-val">PWA 可安装</span></div>' +
+      '</div>';
+
+    const updateBody =
+      '<div class="card" style="margin-top:8px;">' +
+        '<button class="btn btn--primary btn--block" id="update-current">' + K.icon('reset', 18) + '检查更新（当前网址）</button>' +
+        '<div style="margin:14px 0 8px;font-size:13px;color:#7C7C86;">或从指定网址拉取最新版本：</div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<input class="field__input" id="update-url-input" placeholder="https://…" style="flex:1;">' +
+          '<button class="btn btn--mint" id="update-url">从网址更新</button>' +
+        '</div>' +
+      '</div>';
+
+    const dataBody =
+      '<div class="card" style="margin-top:8px;">' +
+        '<button class="btn btn--block" id="export-btn" style="background:#EFFAF3;color:#1E5C3C;">' + K.icon('check', 18) + '备份（导出全部数据）</button>' +
+        '<button class="btn btn--block" id="import-btn" style="background:#FFF1F4;color:#C2495F;margin-top:10px;">' + K.icon('plus', 18) + '导入（选择性恢复备份）</button>' +
+        '<input type="file" id="import-file" accept="application/json,.json" style="display:none">' +
+      '</div>';
+
     root.innerHTML =
       '<div class="view" style="padding-bottom:140px;">' +
         '<div class="page-head"><div class="page-title">设置</div></div>' +
-        '<div style="text-align:center;padding:28px 0 12px;">' +
+        '<div style="text-align:center;padding:26px 0 14px;">' +
           '<div style="width:76px;height:76px;border-radius:22px;background:#FFB7C5;margin:0 auto;display:flex;align-items:center;justify-content:center;">' + K.icon('pot', 40) + '</div>' +
           '<div style="font-size:20px;font-weight:800;margin-top:14px;">厨房小助手</div>' +
           '<div style="font-size:13px;color:#B4B4BE;margin-top:6px;">记录菜谱 · 配置酱汁 · 按步骤烹饪</div>' +
         '</div>' +
-
-        '<div class="section-title">' + K.icon('info', 18) + '版本信息</div>' +
-        '<div class="card">' +
-          '<div class="setting-row" style="margin:0 0 10px;"><span class="sr-label">当前版本</span><span class="sr-val">v' + K.APP_VERSION + '</span></div>' +
-          '<div class="setting-row" style="margin:0 0 10px;"><span class="sr-label">存储方式</span><span class="sr-val">本机存储</span></div>' +
-          '<div class="setting-row" style="margin:0;"><span class="sr-label">安装方式</span><span class="sr-val">PWA 可安装</span></div>' +
-        '</div>' +
-
-        '<div class="section-title">' + K.icon('reset', 18) + '更新</div>' +
-        '<div class="card">' +
-          '<button class="btn btn--primary btn--block" id="update-current">' + K.icon('reset', 18) + '检查更新（当前网址）</button>' +
-          '<div style="margin:14px 0 8px;font-size:13px;color:#7C7C86;">或从指定网址拉取最新版本：</div>' +
-          '<div style="display:flex;gap:8px;">' +
-            '<input class="field__input" id="update-url-input" placeholder="https://…" style="flex:1;">' +
-            '<button class="btn btn--mint" id="update-url">从网址更新</button>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="section-title">' + K.icon('note', 18) + '数据管理</div>' +
-        '<div class="card">' +
-          '<button class="btn btn--block" id="export-btn" style="background:#EFFAF3;color:#1E5C3C;">' + K.icon('check', 18) + '备份（导出全部数据）</button>' +
-          '<button class="btn btn--block" id="import-btn" style="background:#FFF1F4;color:#C2495F;margin-top:10px;">' + K.icon('plus', 18) + '导入（选择性恢复备份）</button>' +
-          '<input type="file" id="import-file" accept="application/json,.json" style="display:none">' +
-        '</div>' +
-
+        section('info', '版本信息', 'version', versionBody) +
+        section('reset', '更新', 'update', updateBody) +
+        section('note', '数据管理', 'data', dataBody) +
         '<div style="text-align:center;font-size:12px;color:#B4B4BE;padding:10px 0;">数据保存在本机浏览器，卸载或清除数据前请先备份。</div>' +
       '</div>';
+
+    // 折叠菜单
+    root.querySelectorAll('[data-sec-head]').forEach(head => {
+      head.addEventListener('click', () => {
+        const id = head.dataset.secHead;
+        const body = root.querySelector('[data-sec-body="' + id + '"]');
+        const isOpen = body.classList.contains('open');
+        root.querySelectorAll('.settings-sec__body').forEach(b => b.classList.remove('open'));
+        root.querySelectorAll('.settings-sec__head').forEach(h => h.classList.remove('open'));
+        if (!isOpen) { body.classList.add('open'); head.classList.add('open'); }
+      });
+    });
 
     document.getElementById('update-current').addEventListener('click', async () => {
       try {

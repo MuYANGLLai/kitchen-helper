@@ -162,8 +162,9 @@
       (r.meats || []).forEach(m => {
         const n = (m.name || '').trim(); if (!n) return;
         const k = n + '|' + (m.unit || '');
-        if (!meats[k]) meats[k] = { name: n, unit: m.unit || '', qty: 0 };
+        if (!meats[k]) meats[k] = { name: n, unit: m.unit || '', qty: 0, thaw: false };
         meats[k].qty += parseFloat(m.qty) || 0;
+        if (m.thaw) meats[k].thaw = true;
       });
       (r.vegetables || []).forEach(v => {
         const n = (v.name || '').trim(); if (!n) return;
@@ -175,7 +176,7 @@
         K.SEASONINGS.forEach(se => {
           const st = r.seasonings && r.seasonings[se.key];
           if (st && st.sel) {
-            if (!seasons[se.key]) seasons[se.key] = { name: se.key, unit: se.unit, qty: 0 };
+            if (!seasons[se.key]) seasons[se.key] = { name: se.key, unit: K.seasoningUnit(r, se.key), qty: 0 };
             seasons[se.key].qty += parseFloat(s.amounts[se.key]) || 0;
           }
         });
@@ -257,7 +258,7 @@
       '</div>' +
       '<div class="summary-card">' +
         '<div class="sum-title">' + K.icon('seasoning', 16) + ' 食材汇总</div>' +
-        (agg.meats.length ? '<div style="font-size:12px;color:#7C7C86;margin-top:6px;">肉类</div><div class="sum-row">' + sumTags(agg.meats) + '</div>' : '') +
+        (agg.meats.length ? '<div style="font-size:12px;color:#7C7C86;margin-top:6px;">肉类</div><div class="sum-row">' + sumTags(agg.meats.map(x => Object.assign({}, x, { name: (x.thaw ? '解冻的' : '') + x.name }))) + '</div>' : '') +
         (agg.vegs.length ? '<div style="font-size:12px;color:#7C7C86;margin-top:6px;">素菜</div><div class="sum-row">' + sumTags(agg.vegs) + '</div>' : '') +
         (agg.seasons.length ? '<div style="font-size:12px;color:#7C7C86;margin-top:6px;">调味料</div><div class="sum-row">' + sumTags(agg.seasons) + '</div>' : '') +
         (!agg.meats.length && !agg.vegs.length && !agg.seasons.length ? '<div style="font-size:13px;color:#7C7C86;">暂无食材</div>' : '') +
@@ -379,17 +380,61 @@
     groups = newGroups;
   }
 
+  let audioCtx = null;
+  function ensureAudio() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    } catch (e) { return null; }
+  }
+  function ring(seconds) {
+    try {
+      const ctx = ensureAudio();
+      if (!ctx) return;
+      const start = ctx.currentTime + 0.05;
+      const n = Math.floor(seconds * 2);
+      for (let i = 0; i < n; i++) {
+        const t = start + i * 0.5;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.3);
+      }
+    } catch (e) {}
+  }
+  function showTimerPopup(note) {
+    const el = document.createElement('div');
+    el.className = 'timer-popup';
+    el.innerHTML = '<div class="timer-popup__title">⏰ 倒计时结束</div>' +
+      (note ? '<div class="timer-popup__note">' + K.esc(note) + '</div>' : '');
+    document.body.appendChild(el);
+    setTimeout(() => { el.classList.add('hide'); setTimeout(() => el.remove(), 300); }, 3000);
+  }
+  function onTimerEnd(m) {
+    ring(5);
+    showTimerPopup(m.note || m.text || '');
+  }
+
   function toggleTimer(m) {
     if (m.running) pauseTimer(m);
     else startTimer(m);
   }
   function startTimer(m) {
     if (m.running) return;
+    ensureAudio();
     if (m.remaining <= 0) m.remaining = m.seconds || 0;
     m.running = true;
     m.timer = setInterval(() => {
       m.remaining--;
-      if (m.remaining <= 0) { m.remaining = 0; pauseTimer(m); K.toast('倒计时结束'); }
+      if (m.remaining <= 0) { m.remaining = 0; pauseTimer(m); onTimerEnd(m); }
       updateTimerDisplay(m);
     }, 1000);
     updateTimerDisplay(m);

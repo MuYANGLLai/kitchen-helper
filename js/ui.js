@@ -146,4 +146,30 @@
       else if (e.target === wrap) close('no');
     });
   };
+
+  /* 历史文本联想（输入框自动补全已输入过的文本） */
+  K.setupSuggest = function (input, getHistory, onPick) {
+    const parent = input.parentElement;
+    parent.classList.add('autocomplete');
+    let listEl = null;
+    const hide = function () { if (listEl) { listEl.remove(); listEl = null; } };
+    const show = function (items) {
+      hide();
+      listEl = document.createElement('div');
+      listEl.className = 'autocomplete__list';
+      if (!items.length) listEl.innerHTML = '<div class="autocomplete__empty">暂无联想</div>';
+      else listEl.innerHTML = items.map(x => '<div class="autocomplete__item" data-v="' + K.esc(x) + '">' + K.esc(x) + '</div>').join('');
+      parent.appendChild(listEl);
+    };
+    input.addEventListener('focus', function () { if (!input.value.trim()) show(getHistory()); });
+    input.addEventListener('input', function () {
+      const v = input.value.trim();
+      show(v ? getHistory().filter(x => x.indexOf(v) >= 0) : getHistory());
+    });
+    input.addEventListener('blur', function () { setTimeout(hide, 160); });
+    parent.addEventListener('click', function (e) {
+      const it = e.target.closest('.autocomplete__item');
+      if (it) { input.value = it.dataset.v; if (onPick) onPick(it.dataset.v); hide(); }
+    });
+  };
 })();

@@ -708,3 +708,61 @@ body.is-dragging * { cursor: grabbing !important; }
 }
 .import-row input { width: 18px; height: 18px; accent-color: var(--pink); flex: none; }
 .import-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- 设置：折叠菜单 ---------- */
+.settings-sec { margin: 10px 0; }
+.settings-sec__head {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  border: none; cursor: pointer; font-family: inherit;
+  background: var(--grey-soft); border-radius: var(--radius-sm);
+  padding: 14px 16px; font-size: 16px; font-weight: 800; color: var(--text);
+}
+.settings-sec__head span { flex: 1; text-align: left; }
+.settings-sec__head svg:last-child { transition: transform .2s; }
+.settings-sec__head.open svg:last-child { transform: rotate(180deg); }
+.settings-sec__body { display: none; }
+.settings-sec__body.open { display: block; animation: fadeIn .2s ease; }
+
+/* ---------- 酱汁：单位下拉选择 ---------- */
+.unit-picker { position: relative; }
+.unit-tab {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: none; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600;
+  background: var(--grey-soft); color: var(--text); border-radius: 10px; padding: 8px 10px;
+}
+.unit-tab svg { width: 13px; height: 13px; }
+.unit-panel {
+  display: none; position: absolute; top: calc(100% + 4px); right: 0; z-index: 40;
+  background: #fff; border-radius: 12px; box-shadow: var(--shadow); padding: 8px; width: 150px;
+  flex-wrap: wrap; gap: 6px;
+}
+.unit-panel.open { display: flex; animation: slideDown .18s ease; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.unit-opt {
+  border: none; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600;
+  background: var(--grey-soft); color: var(--text-2); border-radius: 999px; padding: 6px 12px;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.unit-opt.active { background: var(--pink); color: #7A2E3C; }
+.unit-opt--custom { background: var(--lavender-soft); color: #6B4FA8; }
+
+/* ---------- 烹饪：栏位横向排布 / 连线 / 紧凑工具模块 ---------- */
+.slot-modules { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; padding-top: 4px; }
+.slot-modules .module { margin: 0; flex: 0 1 auto; min-width: 150px; max-width: 230px; }
+.slot-modules .module--tool { min-width: 108px; max-width: 170px; padding: 8px 10px; }
+.slot-modules .module--tool .module__title { font-size: 13px; }
+.slot-modules .module--tool .module-note { font-size: 12px; padding: 6px 8px; margin-top: 6px; }
+.slot-connector { width: 16px; height: 2px; background: #E7DCF6; border-radius: 2px; align-self: center; margin: 0; }
+.slot-modules .empty { width: 100%; }
+
+/* ---------- 倒计时结束弹窗 ---------- */
+.timer-popup {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  background: #fff; border-radius: 22px; box-shadow: 0 16px 40px rgba(0, 0, 0, .22);
+  padding: 22px 26px; text-align: center; z-index: 250; width: min(300px, 80vw);
+  animation: popIn .2s ease;
+}
+@keyframes popIn { from { opacity: 0; transform: translate(-50%, -46%) scale(.9); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+.timer-popup__title { font-size: 18px; font-weight: 800; }
+.timer-popup__note { font-size: 15px; color: var(--text-2); margin-top: 8px; line-height: 1.5; }
+.timer-popup.hide { opacity: 0; transition: opacity .3s; }
