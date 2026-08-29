@@ -244,10 +244,11 @@
       });
     });
 
-    // 模块工具箱管理
-    bindModuleMgmt(root);
-    // 酱汁分类管理
-    bindSauceMgmt(root);
+    // 模块工具箱管理 / 酱汁分类管理（绑定到各分区容器，重渲染时自动失效，避免监听器累积）
+    const toolboxBody = root.querySelector('[data-sec-body="toolbox"]');
+    if (toolboxBody) bindModuleMgmt(toolboxBody);
+    const sauceBody = root.querySelector('[data-sec-body="sauce"]');
+    if (sauceBody) bindSauceMgmt(sauceBody);
   }
 
   function bindModuleMgmt(root) {

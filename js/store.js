@@ -5,7 +5,7 @@
   const LS_METHODS = 'kitchen.methods.v1';
   const LS_PREFS = 'kitchen.prefs.v1';
 
-  const APP_VERSION = '1.12.0';
+  const APP_VERSION = '1.12.1';
 
   /* ------- 常量 ------- */
   const SEASONINGS = [
@@ -67,6 +67,10 @@
     d.customTools = p.customTools || [];
     d.customActions = p.customActions || [];
     d.customTimes = p.customTimes || [];
+    d.toolboxTools = p.toolboxTools || null;
+    d.toolboxActions = p.toolboxActions || null;
+    d.toolboxTimes = p.toolboxTimes || null;
+    d.sauceCategories = p.sauceCategories || null;
     return d;
   }
   function savePrefs(p) { save(LS_PREFS, p); }
@@ -316,6 +320,10 @@
       (data.prefs.customTools || []).forEach(n => { if (p.customTools.indexOf(n) < 0) p.customTools.push(n); });
       (data.prefs.customActions || []).forEach(n => { if (p.customActions.indexOf(n) < 0) p.customActions.push(n); });
       (data.prefs.customTimes || []).forEach(s => { if (p.customTimes.indexOf(s) < 0) p.customTimes.push(s); });
+      if (data.prefs.toolboxTools) p.toolboxTools = data.prefs.toolboxTools;
+      if (data.prefs.toolboxActions) p.toolboxActions = data.prefs.toolboxActions;
+      if (data.prefs.toolboxTimes) p.toolboxTimes = data.prefs.toolboxTimes;
+      if (data.prefs.sauceCategories) p.sauceCategories = data.prefs.sauceCategories;
       savePrefs(p);
     }
     if (opts.methods && data.methods) {
