@@ -1,10 +1,10 @@
-﻿# 厨房小助手 v1.4.0（PWA 部署包）
+﻿# 厨房小助手 v1.4.1（PWA 部署包）
 
 可直接部署的静态 PWA，无需构建。上传到任意静态托管（GitHub Pages / Vercel / Netlify 等）即可用手机访问并「添加到主屏幕」安装。
 
 ## 部署到 GitHub Pages
 1. 新建 GitHub 仓库（如 kitchen-assistant）。
-2. 把本文件夹（1.4.0）内所有内容推送到仓库根目录。
+2. 把本文件夹（1.4.1）内所有内容推送到仓库根目录。
 3. Settings → Pages：Source 选 Deploy from a branch，Branch 选 main，目录选 / (root)。
 4. 访问 https://<你的用户名>.github.io/<仓库名>/ ，手机用「添加到主屏幕」安装。
 

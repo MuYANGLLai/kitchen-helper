@@ -4,7 +4,7 @@
   let step = 1;
   let selectedIds = [];
   let searchQuery = '';
-  let sortMode = null;  // null 未选择 | 'time' 按添加时间 | 'freq' 按使用频率
+  let sortMode = 'time';  // 'time' 按添加时间 | 'freq' 按使用频率
   let groups = [];      // [{recipeId, name, keys:[...]}]
   let moduleMap = {};   // key -> runtime module（含计时状态，稳定）
 
@@ -23,7 +23,7 @@
     step = 1;
     selectedIds = [];
     searchQuery = '';
-    sortMode = null;
+    sortMode = 'time';
     groups = [];
     moduleMap = {};
     K.cleanupCurrent = function () { clearAllTimers(); };
@@ -39,7 +39,6 @@
 
   /* ---------------- 步骤 1：选择菜谱 ---------------- */
   function searchableRecipes() {
-    if (!sortMode) return [];
     const q = (searchQuery || '').trim().toLowerCase();
     const recipes = K.getRecipes().slice();
     if (sortMode === 'freq') {
@@ -80,10 +79,6 @@
   function renderCookGrid() {
     const grid = document.getElementById('cook-grid');
     const list = searchableRecipes();
-    if (!sortMode) {
-      grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">' + K.icon('recipe', 42) + '<div style="margin-top:10px;">点击上方「按时间添加」或「按使用频率」显示菜谱</div></div>';
-      return;
-    }
     if (!list.length) {
       grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">' + K.icon('recipe', 42) + '<div style="margin-top:10px;">' + (K.getRecipes().length ? '没有匹配的菜谱' : '还没有菜谱，请先到「菜谱」页添加') + '</div></div>';
       return;
