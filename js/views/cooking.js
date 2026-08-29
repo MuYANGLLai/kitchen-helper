@@ -7,6 +7,8 @@
   let sortMode = 'time';  // 'time' 按添加时间 | 'freq' 按使用频率
   let recipes = [];     // [{recipeId, name, slots: [{key, label, keys:[...]}]}]
   let moduleMap = {};   // key -> runtime module（含计时状态，稳定）
+  let zoom = 1;         // 放缩比例（0.4 ~ 2.0）
+  let prepMode = 'single';  // 'single' 单列 | 'triple' 三列
 
   const TAG = { tool: '厨具', action: '动作', time: '时间', note: '备注' };
 
@@ -49,6 +51,8 @@
     sortMode = 'time';
     recipes = [];
     moduleMap = {};
+    zoom = 1;
+    prepMode = 'single';
     K.cleanupCurrent = function () { clearAllTimers(); exitFullscreen(); };
     render();
   };
@@ -257,11 +261,34 @@
       });
     });
 
-    const prepHTML = prepItems.map(p =>
+    const prepItemHTML = (p, withBadge) =>
       '<div class="prep-item">' +
-        '<span class="pi-badge">' + K.esc(p.cat) + '</span>' +
+        (withBadge ? '<span class="pi-badge">' + K.esc(p.cat) + '</span>' : '') +
         '<span class="pi-name">' + K.esc(p.name) + '</span>' +
         (p.detail ? '<span class="pi-detail">' + K.esc(p.detail) + '</span>' : '') +
+      '</div>';
+
+    const singlePrepHTML = prepItems.map(p => prepItemHTML(p, true)).join('');
+    const prepOrder = ['素菜', '调味料', '肉类'];
+    const triplePrepHTML = prepOrder.map(cat => {
+      const items = prepItems.filter(p => p.cat === cat);
+      return '<div class="prep-col">' +
+        '<div class="prep-col__head">' + K.esc(cat) + '</div>' +
+        (items.length ? items.map(p => prepItemHTML(p, false)).join('') : '<div class="prep-empty">无</div>') +
+      '</div>';
+    }).join('');
+
+    const sauceStats = selectedIds.map(id => {
+      const r = K.getRecipe(id);
+      if (!r) return null;
+      const details = (r.sauces || []).map((s, si) => K.sauceDetails(r, si)).filter(t => t);
+      return details.length ? { name: r.name, details: details } : null;
+    }).filter(Boolean);
+
+    const sauceStatsHTML = sauceStats.map(x =>
+      '<div class="sauce-stat">' +
+        '<div class="sauce-stat__recipe">' + K.esc(x.name || '菜谱') + '</div>' +
+        x.details.map(d => '<div class="sauce-stat__item">' + K.esc(d) + '</div>').join('') +
       '</div>'
     ).join('');
 
@@ -290,6 +317,12 @@
       '<div class="flow-head">' +
         '<button class="btn btn--icon" id="flow-back">' + K.icon('back', 20) + '</button>' +
         '<div class="fh-title">烹饪流程</div>' +
+        '<button class="btn btn--soft landscape-btn" id="enter-landscape">' + K.icon('reset', 14) + ' 横屏</button>' +
+        '<div class="zoom-control">' +
+          '<button class="zoom-btn" id="zoom-out">−</button>' +
+          '<span class="zoom-val" id="zoom-val">100%</span>' +
+          '<button class="zoom-btn" id="zoom-in">＋</button>' +
+        '</div>' +
         '<button class="hold-btn hold-btn--rect" id="end-cook">长按结束烹饪</button>' +
       '</div>' +
       '<div class="cooking-flow__body">' +
@@ -301,9 +334,22 @@
           (!agg.meats.length && !agg.vegs.length && !agg.seasons.length ? '<div style="font-size:13px;color:#7C7C86;">暂无食材</div>' : '') +
         '</div>' +
         '<div class="prep-list">' +
-          '<div style="font-size:14px;font-weight:800;margin-bottom:4px;">' + K.icon('check', 16) + ' 备料清单</div>' +
-          (prepHTML || '<div style="font-size:13px;color:#7C7C86;">暂无备料</div>') +
+          '<div class="prep-head">' +
+            '<div style="font-size:14px;font-weight:800;">' + K.icon('check', 16) + ' 备料清单</div>' +
+            '<button class="prep-toggle" id="prep-toggle">' + (prepMode === 'single' ? '切换三列' : '切换单列') + '</button>' +
+          '</div>' +
+          (prepItems.length
+            ? (prepMode === 'single'
+                ? '<div class="prep-single">' + singlePrepHTML + '</div>'
+                : '<div class="prep-cols">' + triplePrepHTML + '</div>')
+            : '<div style="font-size:13px;color:#7C7C86;">暂无备料</div>') +
         '</div>' +
+        (sauceStats.length
+          ? '<div class="sauce-stats-card">' +
+              '<div class="sum-title">' + K.icon('sauce', 16) + ' 酱汁统计</div>' +
+              sauceStatsHTML +
+            '</div>'
+          : '') +
         '<div class="section-title">' + K.icon('grip', 18) + '烹饪栏位（一个菜谱一列，拖动可换序，计时可点击）</div>' +
         '<div id="module-area" class="module-area--cols">' + (colsHTML || '<div class="empty">没有选中的菜谱</div>') + '</div>' +
       '</div>' +
@@ -383,6 +429,20 @@
       containerSelector: '#module-area', axis: 'x', onDrop: rebuildFromDOM
     });
 
+    // 放缩
+    document.getElementById('zoom-out').addEventListener('click', () => adjustZoom(-0.1));
+    document.getElementById('zoom-in').addEventListener('click', () => adjustZoom(0.1));
+    applyZoom();
+
+    // 主动进入横屏
+    document.getElementById('enter-landscape').addEventListener('click', () => enterFullscreen());
+
+    // 备料清单单列/三列切换
+    document.getElementById('prep-toggle').addEventListener('click', () => {
+      prepMode = prepMode === 'single' ? 'triple' : 'single';
+      render();
+    });
+
     // 长按结束烹饪
     const hold = document.getElementById('end-cook');
     let holdTimer = null;
@@ -410,6 +470,20 @@
       });
       return { recipeId: rid, name: orig ? orig.name : '', slots: slots };
     });
+  }
+
+  function applyZoom() {
+    const area = document.getElementById('module-area');
+    if (area) {
+      if (area.style.setProperty) area.style.setProperty('--module-zoom', zoom);
+      else area.style['--module-zoom'] = zoom;
+    }
+    const val = document.getElementById('zoom-val');
+    if (val) val.textContent = Math.round(zoom * 100) + '%';
+  }
+  function adjustZoom(d) {
+    zoom = Math.max(0.4, Math.min(2, Math.round((zoom + d) * 10) / 10));
+    applyZoom();
   }
 
   /* ------- 计时 + 提醒 ------- */

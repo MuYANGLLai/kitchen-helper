@@ -5,7 +5,7 @@
   const LS_METHODS = 'kitchen.methods.v1';
   const LS_PREFS = 'kitchen.prefs.v1';
 
-  const APP_VERSION = '1.9.0';
+  const APP_VERSION = '1.11.0';
 
   /* ------- 常量 ------- */
   const SEASONINGS = [
@@ -251,7 +251,8 @@
     selectedSeasonings(recipe).forEach(s => {
       const a = sauce.amounts[s.key];
       const qty = (typeof a === 'string' ? a : (a && typeof a === 'object' ? a.qty : '')) || '';
-      parts.push(s.key + (qty ? ' ' + qty + s.unit : ''));
+      if (!qty) return; // 调味料未填写数量则不显示
+      parts.push(s.key + ' ' + qty + s.unit);
     });
     return parts.join('、');
   }
