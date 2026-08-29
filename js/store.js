@@ -5,7 +5,7 @@
   const LS_METHODS = 'kitchen.methods.v1';
   const LS_PREFS = 'kitchen.prefs.v1';
 
-  const APP_VERSION = '1.4.1';
+  const APP_VERSION = '1.6.0';
 
   /* ------- 常量 ------- */
   const SEASONINGS = [
@@ -144,6 +144,7 @@
       seconds: m.seconds || 0,
       note: m.note || '',
       popup: m.popup !== false,
+      showSauce: m.showSauce !== false,
       _id: m._id || uid()
     };
   }
@@ -236,6 +237,25 @@
     return out;
   }
 
+  /* 某份酱汁的详细信息（名称 + 用量 + 单位） */
+  function sauceDetails(recipe, idx) {
+    const sauce = recipe.sauces && recipe.sauces[idx];
+    if (!sauce) return '';
+    const parts = [];
+    (sauce.selected || []).forEach(n => {
+      const a = sauce.amounts[n];
+      const qty = (a && typeof a === 'object' && a.qty) ? a.qty : '';
+      const unit = (a && typeof a === 'object' && a.unit && a.unit !== '无') ? a.unit : '';
+      parts.push(n + (qty ? ' ' + qty + unit : ''));
+    });
+    selectedSeasonings(recipe).forEach(s => {
+      const a = sauce.amounts[s.key];
+      const qty = (typeof a === 'string' ? a : (a && typeof a === 'object' ? a.qty : '')) || '';
+      parts.push(s.key + (qty ? ' ' + qty + s.unit : ''));
+    });
+    return parts.join('、');
+  }
+
   /* ------- 导出 / 导入 ------- */
   function exportData() {
     return {
@@ -290,7 +310,7 @@
     uid, getRecipes, getRecipe, saveRecipe, deleteRecipe, newRecipe, newSauce, newModule, emptyMeat, emptyVeg,
     getMethodHistory, getMethods, rememberMethod,
     getHistory, addHistory, updateHistory, deleteHistory,
-    seasoningByKey, seasoningUnit, selectedSeasonings,
+    seasoningByKey, seasoningUnit, selectedSeasonings, sauceDetails,
     getPrefs, savePrefs, getAllUnits, addCustomUnit, addCustomSauceItem, getCategoryItems, bumpIngredientUse,
     getUnitHistory, getProcessHistory, rememberUnit, rememberProcess,
     addCustomTool, addCustomAction, addCustomTime, getCustomTools, getCustomActions, getCustomTimes,

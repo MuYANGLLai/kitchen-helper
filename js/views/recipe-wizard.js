@@ -56,7 +56,7 @@
     return '<div class="wizard-head">' +
       '<button class="btn btn--icon wz-back">' + K.icon('back', 20) + '</button>' +
       '<div class="wz-title">' + (editingId ? '编辑菜谱' : '添加菜谱') + '</div>' +
-      '<div class="wz-step">' + step + '/' + TOTAL_STEPS + '</div>' +
+      '<button class="btn btn--primary wz-save">保存</button>' +
     '</div>';
   }
 
@@ -440,7 +440,8 @@
       const opts = draft.sauces.map((s, idx) => ({ s, idx })).filter(x => x.s.purpose === need);
       if (opts.length) {
         const sel = opts.map(x => '<option value="' + x.idx + '"' + (m.sauceId === x.idx ? ' selected' : '') + '>' + K.esc(sauceLabel(x.s, x.idx)) + '</option>').join('');
-        body = '<select class="sauce-select" data-f="sauceId"><option value="">选择' + need + '酱汁</option>' + sel + '</select>';
+        body = '<select class="sauce-select" data-f="sauceId"><option value="">选择' + need + '酱汁</option>' + sel + '</select>' +
+          '<label class="popup-switch"><input type="checkbox" data-f="showSauce"' + (m.showSauce !== false ? ' checked' : '') + '><span>显示酱汁详细信息</span></label>';
       } else {
         body = '<div style="font-size:11px;color:#B4B4BE;margin-top:5px;">请先在「酱汁」页配制' + need + '用途的酱汁</div>';
       }
@@ -581,6 +582,17 @@
   }
 
   /* ============ 页头 / 下一步 ============ */
+  function doSave() {
+    if (!(draft.name || '').trim()) { K.toast('请先为菜谱命名'); return; }
+    if ((draft.cookingMethod || '').trim()) K.rememberMethod(draft.cookingMethod.trim());
+    (draft.sauces || []).forEach(s => (s.selected || []).forEach(n => K.bumpIngredientUse(n)));
+    (draft.meats || []).forEach(m => { K.rememberUnit(m.unit); K.rememberProcess(m.process); });
+    (draft.vegetables || []).forEach(v => { K.rememberUnit(v.unit); K.rememberProcess(v.process); });
+    K.saveRecipe(draft);
+    K.toast(editingId ? '已保存修改' : '菜谱已保存');
+    K.navigate('recipes');
+  }
+
   function bindHeader() {
     root.querySelector('.wz-back').addEventListener('click', () => {
       if (step > 1) { step--; render(); window.scrollTo(0, 0); }
@@ -589,6 +601,8 @@
         else K.navigate('recipes');
       }
     });
+    const saveBtn = root.querySelector('.wz-save');
+    if (saveBtn) saveBtn.addEventListener('click', doSave);
 
     const next = document.getElementById('w-next');
     if (next) next.addEventListener('click', onNext);
@@ -611,13 +625,7 @@
     } else if (step === 3) {
       step = 4;
     } else if (step === 4) {
-      if (!(draft.name || '').trim()) { K.toast('请先为菜谱命名'); return; }
-      (draft.sauces || []).forEach(s => (s.selected || []).forEach(n => K.bumpIngredientUse(n)));
-      (draft.meats || []).forEach(m => { K.rememberUnit(m.unit); K.rememberProcess(m.process); });
-      (draft.vegetables || []).forEach(v => { K.rememberUnit(v.unit); K.rememberProcess(v.process); });
-      K.saveRecipe(draft);
-      K.toast(editingId ? '已保存修改' : '菜谱已保存');
-      K.navigate('recipes');
+      doSave();
       return;
     }
     render();

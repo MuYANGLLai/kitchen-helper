@@ -141,10 +141,11 @@
         const rt = {
           key: key, type: m.type, name: m.name, text: m.text || '', note: m.note || '',
           seconds: m.seconds || 0, remaining: m.seconds || 0, running: false, timer: null,
-          popup: m.popup !== false, sauceText: ''
+          popup: m.popup !== false, showSauce: m.showSauce !== false, sauceText: '', sauceDetail: ''
         };
         if (m.type === 'action' && (m.name === '腌制' || m.name === '调味') && m.sauceId != null && r.sauces[m.sauceId]) {
           rt.sauceText = (r.sauces[m.sauceId].selected || []).join('、') || '未配置食材';
+          rt.sauceDetail = K.sauceDetails(r, m.sauceId);
         }
         moduleMap[key] = rt;
         keys.push(key);
@@ -279,8 +280,9 @@
     if (m.type === 'tool') {
       body = '<div class="module__title">' + K.esc(m.name) + '</div>';
     } else if (m.type === 'action') {
+      const sauceInfo = m.sauceText ? (m.showSauce && m.sauceDetail ? m.sauceDetail : m.sauceText) : '';
       body = '<div class="module__title">' + K.esc(m.name) + '</div>' +
-        (m.sauceText ? '<div style="font-size:12px;color:#7C7C86;margin-top:4px;">' + K.esc(m.sauceText) + '</div>' : '');
+        (sauceInfo ? '<div style="font-size:12px;color:#7C7C86;margin-top:4px;line-height:1.5;">' + K.esc(sauceInfo) + '</div>' : '');
     } else if (m.type === 'time') {
       body = '<div class="timer__label">倒计时</div>' +
         '<div class="timer__display' + (m.running ? ' running' : '') + '" data-key="' + m.key + '">' + K.fmtDuration(m.remaining) + '</div>' +
