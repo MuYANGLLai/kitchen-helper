@@ -5,7 +5,7 @@
   const LS_METHODS = 'kitchen.methods.v1';
   const LS_PREFS = 'kitchen.prefs.v1';
 
-  const APP_VERSION = '1.11.0';
+  const APP_VERSION = '1.12.0';
 
   /* ------- 常量 ------- */
   const SEASONINGS = [
@@ -94,34 +94,49 @@
     savePrefs(p);
   }
 
+  /* 酱汁分类：动态（一级分类 + 二级配料 + 默认展开） */
+  function getSauceCategories() {
+    const p = getPrefs();
+    if (p.sauceCategories) return p.sauceCategories;
+    return SAUCE_CATEGORIES.map(c => {
+      const items = c.items.slice();
+      (p.customSauceItems[c.key] || []).forEach(n => { if (items.indexOf(n) < 0) items.push(n); });
+      return { key: c.key, open: c.open, items: items };
+    });
+  }
+  function saveSauceCategories(list) { const p = getPrefs(); p.sauceCategories = list; savePrefs(p); }
+
+  /* 某分类的配料（手动排序） */
+  function getCategoryItems(catKey) {
+    const cat = getSauceCategories().find(c => c.key === catKey);
+    return cat ? cat.items.slice() : [];
+  }
+
   function addCustomSauceItem(catKey, name) {
     name = (name || '').trim();
     if (!name) return;
-    const p = getPrefs();
-    p.customSauceItems[catKey] = p.customSauceItems[catKey] || [];
-    if (p.customSauceItems[catKey].indexOf(name) < 0) p.customSauceItems[catKey].push(name);
-    savePrefs(p);
+    const list = getSauceCategories();
+    const cat = list.find(c => c.key === catKey);
+    if (cat && cat.items.indexOf(name) < 0) { cat.items.push(name); saveSauceCategories(list); }
   }
 
-  /* 模块工具箱自定义：厨具/动作（名字）、时间（默认时长秒） */
-  function pushUnique(arr, v) { if (v != null && arr.indexOf(v) < 0) arr.push(v); }
-  function addCustomTool(name) { name = (name || '').trim(); if (!name) return; const p = getPrefs(); pushUnique(p.customTools, name); savePrefs(p); }
-  function addCustomAction(name) { name = (name || '').trim(); if (!name) return; const p = getPrefs(); pushUnique(p.customActions, name); savePrefs(p); }
-  function addCustomTime(seconds) { seconds = Math.round(seconds || 0); if (seconds <= 0) return; const p = getPrefs(); pushUnique(p.customTimes, seconds); savePrefs(p); }
-  function getCustomTools() { return getPrefs().customTools || []; }
-  function getCustomActions() { return getPrefs().customActions || []; }
-  function getCustomTimes() { return (getPrefs().customTimes || []).slice().sort((a, b) => a - b); }
-
-  /* 某分类的配料（内置 + 自定义，按使用频率降序） */
-  function getCategoryItems(catKey) {
-    const cat = SAUCE_CATEGORIES.find(c => c.key === catKey);
-    if (!cat) return [];
+  /* 模块工具箱：动态（厨具/动作/时间，含排序删除） */
+  function toolboxList(key, defaults) {
     const p = getPrefs();
-    const custom = (p.customSauceItems[catKey] || []).slice();
-    const all = cat.items.concat(custom.filter(x => cat.items.indexOf(x) < 0));
-    const usage = p.ingredientUsage || {};
-    return all.slice().sort((a, b) => (usage[b] || 0) - (usage[a] || 0));
+    if (p[key] && Array.isArray(p[key])) return p[key].slice();
+    const customKey = key === 'toolboxTools' ? 'customTools' : (key === 'toolboxActions' ? 'customActions' : 'customTimes');
+    return defaults.concat((p[customKey] || []).filter(x => defaults.indexOf(x) < 0));
   }
+  function getToolboxTools() { return toolboxList('toolboxTools', TOOLS); }
+  function getToolboxActions() { return toolboxList('toolboxActions', ACTIONS); }
+  function getToolboxTimes() { return toolboxList('toolboxTimes', [600]); }
+  function saveToolboxTools(list) { const p = getPrefs(); p.toolboxTools = list; savePrefs(p); }
+  function saveToolboxActions(list) { const p = getPrefs(); p.toolboxActions = list; savePrefs(p); }
+  function saveToolboxTimes(list) { const p = getPrefs(); p.toolboxTimes = list; savePrefs(p); }
+
+  function addCustomTool(name) { name = (name || '').trim(); if (!name) return; const l = getToolboxTools(); if (l.indexOf(name) < 0) { l.push(name); saveToolboxTools(l); } }
+  function addCustomAction(name) { name = (name || '').trim(); if (!name) return; const l = getToolboxActions(); if (l.indexOf(name) < 0) { l.push(name); saveToolboxActions(l); } }
+  function addCustomTime(seconds) { seconds = Math.round(seconds || 0); if (seconds <= 0) return; const l = getToolboxTimes(); if (l.indexOf(seconds) < 0) { l.push(seconds); saveToolboxTimes(l); } }
 
   function bumpIngredientUse(name) {
     name = (name || '').trim();
@@ -237,8 +252,15 @@
     return out;
   }
 
-  /* 某份酱汁的详细信息（名称 + 用量 + 单位） */
-  function sauceDetails(recipe, idx) {
+  /* 某份酱汁的详细信息（名称 + 用量 + 单位），mult 为份数倍率 */
+  function mulQty(q, m) {
+    const n = parseFloat(q);
+    if (isNaN(n)) return q;
+    const v = n * m;
+    return (Math.round(v * 100) / 100).toString();
+  }
+  function sauceDetails(recipe, idx, mult) {
+    mult = mult || 1;
     const sauce = recipe.sauces && recipe.sauces[idx];
     if (!sauce) return '';
     const parts = [];
@@ -246,13 +268,13 @@
       const a = sauce.amounts[n];
       const qty = (a && typeof a === 'object' && a.qty) ? a.qty : '';
       const unit = (a && typeof a === 'object' && a.unit && a.unit !== '无') ? a.unit : '';
-      parts.push(n + (qty ? ' ' + qty + unit : ''));
+      parts.push(n + (qty ? ' ' + mulQty(qty, mult) + unit : ''));
     });
     selectedSeasonings(recipe).forEach(s => {
       const a = sauce.amounts[s.key];
       const qty = (typeof a === 'string' ? a : (a && typeof a === 'object' ? a.qty : '')) || '';
       if (!qty) return; // 调味料未填写数量则不显示
-      parts.push(s.key + ' ' + qty + s.unit);
+      parts.push((s.variant || s.key) + ' ' + mulQty(qty, mult) + s.unit);
     });
     return parts.join('、');
   }
@@ -314,7 +336,9 @@
     seasoningByKey, seasoningUnit, selectedSeasonings, sauceDetails,
     getPrefs, savePrefs, getAllUnits, addCustomUnit, addCustomSauceItem, getCategoryItems, bumpIngredientUse,
     getUnitHistory, getProcessHistory, rememberUnit, rememberProcess,
-    addCustomTool, addCustomAction, addCustomTime, getCustomTools, getCustomActions, getCustomTimes,
+    getSauceCategories, saveSauceCategories,
+    addCustomTool, addCustomAction, addCustomTime, getToolboxTools, getToolboxActions, getToolboxTimes,
+    saveToolboxTools, saveToolboxActions, saveToolboxTimes,
     bumpRecipeUse, exportData, importData, clearRecipes, clearHistory, clearPrefs, clearMethods
   });
 })();

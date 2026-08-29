@@ -261,7 +261,7 @@
       '<button class="seg__btn' + (sauce.purpose === p ? ' active' : '') + '" data-purpose="' + p + '">' + p + '</button>'
     ).join('');
 
-    const cats = K.SAUCE_CATEGORIES.map(c => {
+    const cats = K.getSauceCategories().map(c => {
       const open = c.open ? ' sauce-cat--open' : '';
       const items = K.getCategoryItems(c.key);
       const chips = items.map(it => {
@@ -294,16 +294,17 @@
     });
     seasonSel.forEach(s => {
       const qty = (typeof sauce.amounts[s.key] === 'string' ? sauce.amounts[s.key] : '') || '';
+      const label = s.variant || s.key;
       if (s.key === '蒜') {
         const cur = draft.seasonings['蒜'].unit || '瓣';
         rows.push('<div class="amount-row">' +
-          '<span class="amount-row__name">蒜</span>' +
+          '<span class="amount-row__name">' + K.esc(label) + '</span>' +
           '<input type="text" inputmode="decimal" placeholder="用量" data-season="蒜" value="' + K.esc(qty) + '">' +
           '<span class="unit-toggle">' + ['瓣', '头'].map(u => '<button class="chip mini' + (cur === u ? ' active' : '') + '" data-garlic-unit="' + u + '">' + u + '</button>').join('') + '</span>' +
         '</div>');
       } else {
         rows.push('<div class="amount-row">' +
-          '<span class="amount-row__name">' + K.esc(s.key) + '</span>' +
+          '<span class="amount-row__name">' + K.esc(label) + '</span>' +
           '<input type="text" inputmode="decimal" placeholder="用量" data-season="' + K.esc(s.key) + '" value="' + K.esc(qty) + '">' +
           '<span class="amount-row__unit">' + K.esc(s.unit) + '</span>' +
         '</div>');
@@ -394,16 +395,13 @@
 
     let items = '';
     if (toolboxTab === '厨具') {
-      items = K.TOOLS.map(x => '<button class="toolbox__item tool" data-tool="' + K.esc(x) + '">' + K.esc(x) + '</button>').join('') +
-        K.getCustomTools().map(x => '<button class="toolbox__item tool" data-tool="' + K.esc(x) + '">' + K.esc(x) + '</button>').join('') +
+      items = K.getToolboxTools().map(x => '<button class="toolbox__item tool" data-tool="' + K.esc(x) + '">' + K.esc(x) + '</button>').join('') +
         '<button class="toolbox__item custom" data-custom="tool">' + K.icon('plus', 14) + ' 自定义</button>';
     } else if (toolboxTab === '动作') {
-      items = K.ACTIONS.map(x => '<button class="toolbox__item action" data-action="' + K.esc(x) + '">' + K.esc(x) + '</button>').join('') +
-        K.getCustomActions().map(x => '<button class="toolbox__item action" data-action="' + K.esc(x) + '">' + K.esc(x) + '</button>').join('') +
+      items = K.getToolboxActions().map(x => '<button class="toolbox__item action" data-action="' + K.esc(x) + '">' + K.esc(x) + '</button>').join('') +
         '<button class="toolbox__item custom" data-custom="action">' + K.icon('plus', 14) + ' 自定义</button>';
     } else {
-      items = '<button class="toolbox__item time" data-addtime="1">' + K.icon('timer', 16) + ' 添加计时（10分钟）</button>' +
-        K.getCustomTimes().map(s => '<button class="toolbox__item time" data-addtime-sec="' + s + '">' + K.esc(K.fmtTimeName(s)) + '</button>').join('') +
+      items = K.getToolboxTimes().map(s => '<button class="toolbox__item time" data-addtime-sec="' + s + '">' + K.esc(K.fmtTimeName(s)) + '</button>').join('') +
         '<button class="toolbox__item custom" data-custom="time">' + K.icon('plus', 14) + ' 自定义时间</button>';
     }
 

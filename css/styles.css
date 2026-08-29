@@ -831,6 +831,25 @@ body.is-dragging * { cursor: grabbing !important; }
 .sauce-stat:last-child { margin-bottom: 0; }
 .sauce-stat__recipe { font-size: 14px; font-weight: 800; margin-bottom: 4px; }
 .sauce-stat__item { font-size: 13px; color: var(--text-2); line-height: 1.5; padding-left: 4px; }
+
+/* 选菜谱份数 */
+.qty-stepper { display: inline-flex; align-items: center; gap: 6px; margin: 8px 10px 10px; }
+.qty-btn { width: 24px; height: 24px; border: none; cursor: pointer; border-radius: 50%; background: var(--pink); color: #7A2E3C; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.qty-count { font-size: 14px; font-weight: 800; min-width: 28px; text-align: center; }
+
+/* ---------- 管理界面 ---------- */
+.mgmt-title { font-size: 14px; font-weight: 800; margin: 4px 0 8px; }
+.mgmt-row { display: flex; align-items: center; gap: 6px; background: #fff; border-radius: 10px; padding: 7px 10px; margin: 6px 0; }
+.mgmt-label { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mgmt-btn { width: 26px; height: 26px; border: none; cursor: pointer; border-radius: 8px; background: var(--grey-soft); color: var(--text-2); font-size: 13px; display: flex; align-items: center; justify-content: center; flex: none; }
+.mgmt-btn--del { background: var(--pink-soft); color: #E0556A; }
+.mgmt-cat { background: #fff; border-radius: 12px; padding: 8px 10px; margin: 8px 0; }
+.mgmt-cat__head { display: flex; align-items: center; gap: 6px; }
+.mgmt-label--cat { font-size: 15px; font-weight: 800; }
+.mgmt-open { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-2); margin-right: auto; }
+.mgmt-open input { width: 14px; height: 14px; accent-color: var(--pink); }
+.mgmt-cat__items { margin: 6px 0 0 8px; }
+.mgmt-row--item { background: var(--grey-soft); }
 .recipe-col__handle { color: var(--text-3); cursor: grab; touch-action: none; display: flex; align-items: center; flex: none; }
 .recipe-col__handle svg { width: 15px; height: 15px; }
 .recipe-col__name { font-size: 13px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

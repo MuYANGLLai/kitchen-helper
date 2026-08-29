@@ -3,12 +3,13 @@
   let root = null;
   let step = 1;
   let selectedIds = [];
+  let counts = {};      // recipeId -> 份数
   let searchQuery = '';
   let sortMode = 'time';  // 'time' 按添加时间 | 'freq' 按使用频率
   let recipes = [];     // [{recipeId, name, slots: [{key, label, keys:[...]}]}]
   let moduleMap = {};   // key -> runtime module（含计时状态，稳定）
   let zoom = 1;         // 放缩比例（0.4 ~ 2.0）
-  let prepMode = 'single';  // 'single' 单列 | 'triple' 三列
+  let prepMode = 'triple';  // 'single' 单列 | 'triple' 三列（默认三列）
 
   const TAG = { tool: '厨具', action: '动作', time: '时间', note: '备注' };
 
@@ -47,12 +48,13 @@
     root = container;
     step = 1;
     selectedIds = [];
+    counts = {};
     searchQuery = '';
     sortMode = 'time';
     recipes = [];
     moduleMap = {};
     zoom = 1;
-    prepMode = 'single';
+    prepMode = 'triple';
     K.cleanupCurrent = function () { clearAllTimers(); exitFullscreen(); };
     render();
   };
@@ -112,13 +114,19 @@
     }
     grid.innerHTML = list.map(r => {
       const sel = selectedIds.indexOf(r.id) >= 0;
+      const cnt = counts[r.id] || 1;
       const img = r.photo ? '<img class="recipe-tile__img" src="' + r.photo + '" alt="">' : '<div class="recipe-tile__ph ' + K.phClass(r.id) + '">🍲</div>';
-      return '<button class="recipe-tile' + (sel ? ' selected' : '') + '" data-id="' + r.id + '">' +
+      return '<div class="recipe-tile' + (sel ? ' selected' : '') + '" data-id="' + r.id + '">' +
         img +
         '<span class="select-check">' + (sel ? K.icon('check', 15) : '') + '</span>' +
         '<div class="recipe-tile__name">' + K.esc(r.name || '未命名菜谱') + '</div>' +
         '<div class="recipe-tile__meta">' + K.esc(r.cookingMethod || '') + '</div>' +
-      '</button>';
+        (sel ? '<div class="qty-stepper">' +
+          '<button class="qty-btn" data-qty-minus="' + r.id + '">−</button>' +
+          '<span class="qty-count">×' + cnt + '</span>' +
+          '<button class="qty-btn" data-qty-plus="' + r.id + '">＋</button>' +
+        '</div>' : '') +
+      '</div>';
     }).join('');
   }
 
@@ -138,11 +146,15 @@
 
     const grid = document.getElementById('cook-grid');
     grid.addEventListener('click', e => {
+      const qPlus = e.target.closest('[data-qty-plus]');
+      if (qPlus) { const id = qPlus.dataset.qtyPlus; counts[id] = Math.min(99, (counts[id] || 1) + 1); renderCookGrid(); return; }
+      const qMinus = e.target.closest('[data-qty-minus]');
+      if (qMinus) { const id = qMinus.dataset.qtyMinus; counts[id] = Math.max(1, (counts[id] || 1) - 1); renderCookGrid(); return; }
       const tile = e.target.closest('.recipe-tile');
       if (!tile) return;
       const id = tile.dataset.id;
       const i = selectedIds.indexOf(id);
-      if (i >= 0) selectedIds.splice(i, 1); else selectedIds.push(id);
+      if (i >= 0) { selectedIds.splice(i, 1); delete counts[id]; } else { selectedIds.push(id); counts[id] = 1; }
       renderCookGrid();
     });
 
@@ -194,25 +206,26 @@
     selectedIds.forEach(id => {
       const r = K.getRecipe(id);
       if (!r) return;
+      const mult = counts[id] || 1;
       (r.meats || []).forEach(m => {
         const n = (m.name || '').trim(); if (!n) return;
         const k = n + '|' + (m.unit || '');
         if (!meats[k]) meats[k] = { name: n, unit: m.unit || '', qty: 0, thaw: false };
-        meats[k].qty += parseFloat(m.qty) || 0;
+        meats[k].qty += (parseFloat(m.qty) || 0) * mult;
         if (m.thaw) meats[k].thaw = true;
       });
       (r.vegetables || []).forEach(v => {
         const n = (v.name || '').trim(); if (!n) return;
         const k = n + '|' + (v.unit || '');
         if (!vegs[k]) vegs[k] = { name: n, unit: v.unit || '', qty: 0 };
-        vegs[k].qty += parseFloat(v.qty) || 0;
+        vegs[k].qty += (parseFloat(v.qty) || 0) * mult;
       });
       (r.sauces || []).forEach(s => {
         K.SEASONINGS.forEach(se => {
           const st = r.seasonings && r.seasonings[se.key];
           if (st && st.sel) {
             if (!seasons[se.key]) seasons[se.key] = { name: se.key, unit: K.seasoningUnit(r, se.key), qty: 0 };
-            seasons[se.key].qty += parseFloat(s.amounts[se.key]) || 0;
+            seasons[se.key].qty += (parseFloat(s.amounts[se.key]) || 0) * mult;
           }
         });
       });
@@ -281,7 +294,11 @@
     const sauceStats = selectedIds.map(id => {
       const r = K.getRecipe(id);
       if (!r) return null;
-      const details = (r.sauces || []).map((s, si) => K.sauceDetails(r, si)).filter(t => t);
+      const mult = counts[id] || 1;
+      const details = (r.sauces || []).map((s, si) => {
+        const d = K.sauceDetails(r, si, mult);
+        return d ? '酱汁' + (si + 1) + '：' + d : '';
+      }).filter(t => t);
       return details.length ? { name: r.name, details: details } : null;
     }).filter(Boolean);
 
