@@ -265,8 +265,8 @@
       '</div>'
     ).join('');
 
-    const colsHTML = recipes.map(rc =>
-      '<div class="recipe-col" data-recipe="' + K.esc(rc.recipeId) + '">' +
+    const colsHTML = recipes.map((rc, ci) =>
+      '<div class="recipe-col recipe-col--c' + (ci % 6) + '" data-recipe="' + K.esc(rc.recipeId) + '">' +
         '<div class="recipe-col__head">' +
           '<div class="recipe-col__handle">' + K.icon('grip', 15) + '</div>' +
           '<span class="recipe-col__name">' + K.esc(rc.name || '菜谱') + '</span>' +
@@ -277,7 +277,7 @@
               '<div class="slot__head"><span class="slot__title">' + K.esc(sl.label) + '</span></div>' +
               '<div class="slot-modules">' +
                 (sl.keys.length
-                  ? sl.keys.map((k, idx) => flowModuleHTML(moduleMap[k]) + (idx < sl.keys.length - 1 ? '<div class="slot-connector"></div>' : '')).join('')
+                  ? sl.keys.map(k => flowModuleHTML(moduleMap[k])).join('')
                   : '<div class="empty" style="width:100%;padding:8px 0;">无模块</div>') +
               '</div>' +
             '</div>'

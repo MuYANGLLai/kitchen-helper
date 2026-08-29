@@ -421,7 +421,7 @@
 
   function slotHTML(i, modules) {
     const inner = modules.length
-      ? modules.map((m, idx) => moduleHTML(m) + (idx < modules.length - 1 ? '<div class="slot-connector"></div>' : '')).join('')
+      ? modules.map(m => moduleHTML(m)).join('')
       : '<div class="empty slot-empty" style="padding:14px 0;">空栏位 — 点上方工具箱添加模块</div>';
     return '<div class="slot" data-slot="' + i + '">' +
       '<div class="slot__head">' +
