@@ -1,14 +1,37 @@
-/* 开始烹饪：选菜谱 -> 烹饪流程（食材统计 + 模块倒计时 + 拖拽） */
+/* 开始烹饪：选菜谱 -> 烹饪流程（食材统计 + 栏位模块 + 倒计时 + 拖拽 + 全屏） */
 (function () {
   let root = null;
   let step = 1;
   let selectedIds = [];
   let searchQuery = '';
   let sortMode = 'time';  // 'time' 按添加时间 | 'freq' 按使用频率
-  let groups = [];      // [{recipeId, name, keys:[...]}]
+  let recipes = [];     // [{recipeId, name, slots: [{key, label, keys:[...]}]}]
   let moduleMap = {};   // key -> runtime module（含计时状态，稳定）
 
   const TAG = { tool: '厨具', action: '动作', time: '时间', note: '备注' };
+
+  /* ------- 全屏 ------- */
+  function enterFullscreen() {
+    try {
+      const el = document.documentElement;
+      const p = el.requestFullscreen ? el.requestFullscreen() : (el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : null);
+      if (p && p.catch) p.catch(() => {});
+    } catch (e) {}
+    try {
+      if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+    } catch (e) {}
+    document.body.classList.add('cooking-mode');
+  }
+  function exitFullscreen() {
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch (e) {}
+    try {
+      if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+    } catch (e) {}
+    document.body.classList.remove('cooking-mode');
+  }
 
   function clearAllTimers() {
     Object.keys(moduleMap).forEach(k => {
@@ -24,9 +47,9 @@
     selectedIds = [];
     searchQuery = '';
     sortMode = 'time';
-    groups = [];
+    recipes = [];
     moduleMap = {};
-    K.cleanupCurrent = function () { clearAllTimers(); };
+    K.cleanupCurrent = function () { clearAllTimers(); exitFullscreen(); };
     render();
   };
 
@@ -125,32 +148,39 @@
       step = 2;
       render();
       window.scrollTo(0, 0);
+      enterFullscreen();
     });
+
+    renderCookGrid();
   }
 
   function buildRuntime() {
     moduleMap = {};
-    groups = [];
+    recipes = [];
     selectedIds.forEach(id => {
       const r = K.getRecipe(id);
       if (!r) return;
-      const keys = [];
-      const mods = (r.slots && r.slots.length) ? r.slots.flat() : (r.modules || []);
-      mods.forEach((m, idx) => {
-        const key = r.id + '-' + idx + '-' + K.uid().slice(0, 4);
-        const rt = {
-          key: key, type: m.type, name: m.name, text: m.text || '', note: m.note || '',
-          seconds: m.seconds || 0, remaining: m.seconds || 0, running: false, timer: null,
-          popup: m.popup !== false, showSauce: m.showSauce !== false, sauceText: '', sauceDetail: ''
-        };
-        if (m.type === 'action' && (m.name === '腌制' || m.name === '调味') && m.sauceId != null && r.sauces[m.sauceId]) {
-          rt.sauceText = (r.sauces[m.sauceId].selected || []).join('、') || '未配置食材';
-          rt.sauceDetail = K.sauceDetails(r, m.sauceId);
-        }
-        moduleMap[key] = rt;
-        keys.push(key);
+      const slotDefs = (r.slots && r.slots.length) ? r.slots : [(r.modules || [])];
+      const col = { recipeId: r.id, name: r.name, slots: [] };
+      slotDefs.forEach((slotModules, si) => {
+        const slotKey = r.id + '-s' + si;
+        const keys = slotModules.map((m, mi) => {
+          const key = r.id + '-' + si + '-' + mi + '-' + K.uid().slice(0, 4);
+          const rt = {
+            key: key, type: m.type, name: m.name, text: m.text || '', note: m.note || '',
+            seconds: m.seconds || 0, remaining: m.seconds || 0, running: false, timer: null,
+            popup: m.popup !== false, showSauce: m.showSauce !== false, sauceText: '', sauceDetail: ''
+          };
+          if (m.type === 'action' && (m.name === '腌制' || m.name === '调味') && m.sauceId != null && r.sauces[m.sauceId]) {
+            rt.sauceText = (r.sauces[m.sauceId].selected || []).join('、') || '未配置食材';
+            rt.sauceDetail = K.sauceDetails(r, m.sauceId);
+          }
+          moduleMap[key] = rt;
+          return key;
+        });
+        col.slots.push({ key: slotKey, label: '栏位 ' + (si + 1), keys: keys });
       });
-      groups.push({ recipeId: r.id, name: r.name, keys: keys });
+      recipes.push(col);
     });
   }
 
@@ -191,13 +221,12 @@
   function step2HTML() {
     const agg = aggregate();
 
-    const sumTags = (arr, color) => arr.map(x => {
+    const sumTags = (arr) => arr.map(x => {
       const q = qtyStr(x);
       return '<span class="sum-tag">' + K.esc(x.name) + (q ? ' <span class="q">' + K.esc(q) + '</span>' : '') + '</span>';
     }).join('');
 
     const prepItems = [];
-    // 素菜
     const vegSeen = {};
     selectedIds.forEach(id => {
       const r = K.getRecipe(id); if (!r) return;
@@ -208,7 +237,6 @@
         prepItems.push({ cat: '素菜', name: n, detail: v.process || '' });
       });
     });
-    // 调味料
     const seasonSeen = {};
     selectedIds.forEach(id => {
       const r = K.getRecipe(id); if (!r) return;
@@ -218,7 +246,6 @@
         prepItems.push({ cat: '调味料', name: s.key, detail: detail });
       });
     });
-    // 肉类
     const meatSeen = {};
     selectedIds.forEach(id => {
       const r = K.getRecipe(id); if (!r) return;
@@ -238,15 +265,23 @@
       '</div>'
     ).join('');
 
-    const groupsHTML = groups.map(g =>
-      '<div class="recipe-group" data-group="' + g.recipeId + '">' +
-        '<div class="recipe-group__head">' +
-          '<div class="recipe-group__handle">' + K.icon('grip', 20) + '</div>' +
-          '<div class="recipe-group__name">' + K.esc(g.name || '未命名菜谱') + '</div>' +
-          '<div class="recipe-group__count">' + g.keys.length + ' 个模块</div>' +
+    const colsHTML = recipes.map(rc =>
+      '<div class="recipe-col" data-recipe="' + K.esc(rc.recipeId) + '">' +
+        '<div class="recipe-col__head">' +
+          '<div class="recipe-col__handle">' + K.icon('grip', 15) + '</div>' +
+          '<span class="recipe-col__name">' + K.esc(rc.name || '菜谱') + '</span>' +
         '</div>' +
-        '<div class="modules module-list" data-list="' + g.recipeId + '">' +
-          (g.keys.length ? g.keys.map(k => flowModuleHTML(moduleMap[k])).join('') : '<div class="empty" style="padding:16px 0;">该菜谱暂无烹饪模块</div>') +
+        '<div class="recipe-col__slots">' +
+          rc.slots.map(sl =>
+            '<div class="slot" data-slot-key="' + K.esc(sl.key) + '">' +
+              '<div class="slot__head"><span class="slot__title">' + K.esc(sl.label) + '</span></div>' +
+              '<div class="slot-modules">' +
+                (sl.keys.length
+                  ? sl.keys.map((k, idx) => flowModuleHTML(moduleMap[k]) + (idx < sl.keys.length - 1 ? '<div class="slot-connector"></div>' : '')).join('')
+                  : '<div class="empty" style="width:100%;padding:8px 0;">无模块</div>') +
+              '</div>' +
+            '</div>'
+          ).join('') +
         '</div>' +
       '</div>'
     ).join('');
@@ -269,8 +304,8 @@
           '<div style="font-size:14px;font-weight:800;margin-bottom:4px;">' + K.icon('check', 16) + ' 备料清单</div>' +
           (prepHTML || '<div style="font-size:13px;color:#7C7C86;">暂无备料</div>') +
         '</div>' +
-        '<div class="section-title">' + K.icon('grip', 18) + '烹饪模块（各菜谱平行，拖动调整，计时可点击）</div>' +
-        '<div id="module-area" class="module-area--side">' + (groupsHTML || '<div class="empty">没有选中的菜谱</div>') + '</div>' +
+        '<div class="section-title">' + K.icon('grip', 18) + '烹饪栏位（一个菜谱一列，拖动可换序，计时可点击）</div>' +
+        '<div id="module-area" class="module-area--cols">' + (colsHTML || '<div class="empty">没有选中的菜谱</div>') + '</div>' +
       '</div>' +
     '</div>';
   }
@@ -282,7 +317,7 @@
     } else if (m.type === 'action') {
       const sauceInfo = m.sauceText ? (m.showSauce && m.sauceDetail ? m.sauceDetail : m.sauceText) : '';
       body = '<div class="module__title">' + K.esc(m.name) + '</div>' +
-        (sauceInfo ? '<div style="font-size:12px;color:#7C7C86;margin-top:4px;line-height:1.5;">' + K.esc(sauceInfo) + '</div>' : '');
+        (sauceInfo ? '<div style="font-size:10px;color:#7C7C86;margin-top:2px;line-height:1.3;">' + K.esc(sauceInfo) + '</div>' : '');
     } else if (m.type === 'time') {
       body = '<div class="timer__label">倒计时</div>' +
         '<div class="timer__display' + (m.running ? ' running' : '') + '" data-key="' + m.key + '">' + K.fmtDuration(m.remaining) + '</div>' +
@@ -293,12 +328,14 @@
     }
 
     const note = m.note || m.text || '';
-    if (note) body += '<div style="font-size:13px;color:#7C7C86;margin-top:6px;line-height:1.5;">📝 ' + K.esc(note) + '</div>';
+    if (note) body += '<div style="font-size:10px;color:#7C7C86;margin-top:3px;line-height:1.3;">📝 ' + K.esc(note) + '</div>';
 
     return '<div class="module flow-module" data-key="' + m.key + '">' +
-      '<div class="module__handle">' + K.icon('grip', 18) + '</div>' +
+      '<div class="module__top">' +
+        '<div class="module__handle">' + K.icon('grip', 13) + '</div>' +
+      '</div>' +
       '<div class="module__body">' +
-        '<span class="module__tag module__tag--' + m.type + '">' + TAG[m.type] + '</span>' +
+        '<span class="module__tag module__tag--' + m.type + '">' + (TAG[m.type] || '模块') + '</span>' +
         body +
       '</div>' +
     '</div>';
@@ -307,6 +344,7 @@
   function bindStep2() {
     document.getElementById('flow-back').addEventListener('click', () => {
       clearAllTimers();
+      exitFullscreen();
       step = 1;
       render();
       window.scrollTo(0, 0);
@@ -334,14 +372,14 @@
       });
     });
 
-    // 拖拽：模块（可跨菜谱组）
+    // 拖拽：模块（栏位内横向 / 可跨栏位）
     K.makeDraggable({
       root: area, itemSelector: '.flow-module', handleSelector: '.module__handle',
-      containerSelector: '.module-list', onDrop: rebuildFromDOM
+      containerSelector: '.slot-modules', axis: 'x', onDrop: rebuildFromDOM
     });
-    // 拖拽：菜谱组整体移动（横向平行）
+    // 拖拽：整列菜谱（左右移动）
     K.makeDraggable({
-      root: area, itemSelector: '.recipe-group', handleSelector: '.recipe-group__handle',
+      root: area, itemSelector: '.recipe-col', handleSelector: '.recipe-col__handle',
       containerSelector: '#module-area', axis: 'x', onDrop: rebuildFromDOM
     });
 
@@ -359,30 +397,22 @@
   function rebuildFromDOM() {
     const area = document.getElementById('module-area');
     if (!area) return;
-    const groupEls = Array.from(area.querySelectorAll(':scope > .recipe-group'));
-    const newGroups = groupEls.map(gEl => {
-      const gid = gEl.dataset.group;
-      const g = groups.find(x => x.recipeId === gid);
-      const keys = Array.from(gEl.querySelectorAll(':scope > .module-list > .flow-module')).map(el => el.dataset.key);
-      const countEl = gEl.querySelector('.recipe-group__count');
-      if (countEl) countEl.textContent = keys.length + ' 个模块';
-      const listEl = gEl.querySelector('.module-list');
-      if (listEl) {
-        const empty = listEl.querySelector(':scope > .empty');
-        if (keys.length && empty) empty.remove();
-        else if (!keys.length && !empty) {
-          const d = document.createElement('div');
-          d.className = 'empty';
-          d.style.cssText = 'padding:16px 0;';
-          d.textContent = '该菜谱暂无烹饪模块';
-          listEl.appendChild(d);
-        }
-      }
-      return { recipeId: gid, name: g ? g.name : '', keys: keys };
+    const colEls = Array.from(area.querySelectorAll(':scope > .recipe-col'));
+    recipes = colEls.map(colEl => {
+      const rid = colEl.dataset.recipe;
+      const orig = recipes.find(x => x.recipeId === rid);
+      const slotEls = Array.from(colEl.querySelectorAll(':scope > .recipe-col__slots > .slot'));
+      const slots = slotEls.map(slEl => {
+        const key = slEl.dataset.slotKey;
+        const o = orig ? orig.slots.find(s => s.key === key) : null;
+        const keys = Array.from(slEl.querySelectorAll(':scope > .slot-modules > .flow-module')).map(el => el.dataset.key);
+        return { key: key, label: o ? o.label : '', keys: keys };
+      });
+      return { recipeId: rid, name: orig ? orig.name : '', slots: slots };
     });
-    groups = newGroups;
   }
 
+  /* ------- 计时 + 提醒 ------- */
   let audioCtx = null;
   function ensureAudio() {
     try {

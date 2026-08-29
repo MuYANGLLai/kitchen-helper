@@ -2,7 +2,7 @@
    注意：每次发布新版本时请同时：
    1) 更新 version.json 里的 version；
    2) 修改下方 CACHE 名称（如 v2 -> v3），以便浏览器更新缓存。 */
-const CACHE = 'kitchen-assistant-v4';
+const CACHE = 'kitchen-assistant-v6';
 const ASSETS = [
   './',
   './index.html',

@@ -5,7 +5,7 @@
   const LS_METHODS = 'kitchen.methods.v1';
   const LS_PREFS = 'kitchen.prefs.v1';
 
-  const APP_VERSION = '1.6.0';
+  const APP_VERSION = '1.8.0';
 
   /* ------- 常量 ------- */
   const SEASONINGS = [

@@ -59,7 +59,7 @@
     const delBtn = document.getElementById('delete-toggle');
     if (addBtn) addBtn.style.display = deleteMode ? 'none' : '';
     if (delBtn) {
-      delBtn.innerHTML = deleteMode ? '取消' : K.icon('trash', 17) + '删除';
+      delBtn.innerHTML = deleteMode ? '完成' : K.icon('trash', 17) + '删除';
       delBtn.classList.toggle('btn--primary', deleteMode);
       delBtn.classList.toggle('btn--soft', !deleteMode);
     }
@@ -118,7 +118,8 @@
         '<div class="grid-3" id="recipe-grid"></div>' +
       '</div>' +
       '<div class="page-footer hidden" id="delete-footer">' +
-        '<button class="btn btn--primary btn--block" id="delete-confirm" disabled>删除选中（0）</button>' +
+        '<button class="btn btn--soft" id="delete-cancel">取消</button>' +
+        '<button class="btn btn--primary" id="delete-confirm" disabled>删除选中（0）</button>' +
       '</div>';
 
     document.getElementById('add-recipe').addEventListener('click', () => K.navigate('wizard', {}));
@@ -152,6 +153,11 @@
       } else {
         K.navigate('wizard', { id: id });
       }
+    });
+
+    document.getElementById('delete-cancel').addEventListener('click', () => {
+      deleteMode = false; deleteSel = [];
+      render();
     });
 
     document.getElementById('delete-confirm').addEventListener('click', () => {
